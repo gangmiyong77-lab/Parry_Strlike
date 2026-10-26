@@ -1,12 +1,13 @@
 const container = document.getElementById('game-container');
 const playerEl = document.getElementById('player');
+const floatingCdEl = document.getElementById('floating-cd'); // ★ 이 줄이 빠져있었습니다!
 const parryStatusEl = document.getElementById('parry-status');
-const dashStatusEl = document.getElementById('dash-status');
+const dashStatusEl = document.getElementById('dash-status'); // (HTML에 id 추가됨에 따라 가져오기 방식 변경)
 const skillStatusEl = document.getElementById('skill-status');
 const playerSwordEl = document.getElementById('player-sword');
 
 let isPaused = true;
-let isMobileEnv = false; 
+let isMobileEnv = false;
 
 // 오디오 설정
 const audioDead = new Audio('./Dead.mp3'); const audioAttack1 = new Audio('./Attack1.mp3'); const audioAttack2 = new Audio('./Attack2.mp3'); const audioParry = new Audio('./Parry.mp3'); const audioParryed = new Audio('./Parryed.mp3'); const audioSwing = new Audio('./Swing.mp3');
