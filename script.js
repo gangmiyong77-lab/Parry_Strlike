@@ -167,7 +167,8 @@ container.insertAdjacentHTML('beforeend', `
     <div id="leaderboard-modal" class="modal hidden" style="width: 90%; max-width: 600px; height: 75vh; display: flex; flex-direction: column;">
         <h2 style="color: #f1c40f; margin-top: 0; flex-shrink: 0;">🏆 랭킹 리더보드</h2>
         <div style="flex: 1; width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 15px; background: white;">
-            <iframe class="leaderboard-iframe" src="https://docs.google.com/spreadsheets/d/190rTIf_nsxscNZ3qhOHnHQgTBXnRvxGke9gcQ7CVyuQ/htmlembed?widget=false&headers=false&chrome=false"></iframe>
+            <!-- 실시간 업데이트를 위한 캐시 방지 스크립트 연결용 iframe -->
+            <iframe class="leaderboard-iframe" src=""></iframe>
         </div>
         <button id="btn-close-lb" class="tut-close" style="flex-shrink: 0;" onclick="window.closeLeaderboard()">닫기</button>
     </div>
@@ -205,16 +206,20 @@ if (gameOverModal) {
             <input type="text" id="nickname-input" placeholder="닉네임을 입력하세요" style="width: 85%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: none; font-size: 14px; text-align: center; color: black;">
             <button class="restart-btn" id="btn-submit-score" style="background: #27ae60; margin-top: 0; padding: 12px;" onclick="window.submitScore()">기록 저장하기</button>
         </div>
-        <button class="restart-btn" id="btn-show-lb-go" style="background: #8e44ad; padding: 12px; margin-bottom: 10px;" onclick="window.showLeaderboard()">📊 리더보드 확인</button>
-        <button class="restart-btn" id="btn-restart-game" style="padding: 12px;" onclick="window.restartGame()">다시 시작하기</button>
+        
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <button class="restart-btn" id="btn-show-lb-go" style="background: #8e44ad; padding: 12px; margin: 0; flex: 1;" onclick="window.showLeaderboard()">📊 리더보드</button>
+            <button class="restart-btn" style="background: #34495e; padding: 12px; margin: 0; flex: 1;" onclick="window.location.reload()">🏠 메인 메뉴</button>
+        </div>
+        
+        <button class="restart-btn" id="btn-restart-game" style="padding: 12px; margin: 0;" onclick="window.restartGame()">다시 시작하기</button>
     `;
 }
 
 // =========================================================
-// 전역(Window) 제어 함수 강제 매핑 (버튼 먹통 완벽 해결)
+// 전역(Window) 제어 함수 (캐시 방지 및 강제 초기화 포함)
 // =========================================================
 window.startGame = function() { 
-    // 중복 생성된 화면이 있을 수 있으니 querySelectorAll로 전부 가림
     document.querySelectorAll('#opening-screen').forEach(el => el.style.display = 'none');
     document.querySelectorAll('#btn-giveup').forEach(el => el.style.display = 'block');
     isPaused = false; 
@@ -224,8 +229,15 @@ window.startGame = function() {
 };
 window.showTutorial = function() { document.querySelectorAll('#tutorial-modal').forEach(el => el.classList.remove('hidden')); };
 window.closeTutorial = function() { document.querySelectorAll('#tutorial-modal').forEach(el => el.classList.add('hidden')); };
-window.showLeaderboard = function() { document.querySelectorAll('#leaderboard-modal').forEach(el => el.classList.remove('hidden')); };
+
+window.showLeaderboard = function() { 
+    // 구글 시트 URL 뒤에 현재시간(난수)을 붙여 항상 최신 데이터를 강제로 불러옵니다.
+    const nocacheUrl = "https://docs.google.com/spreadsheets/d/190rTIf_nsxscNZ3qhOHnHQgTBXnRvxGke9gcQ7CVyuQ/htmlembed?widget=false&headers=false&chrome=false&t=" + new Date().getTime();
+    document.querySelectorAll('.leaderboard-iframe').forEach(iframe => iframe.src = nocacheUrl);
+    document.querySelectorAll('#leaderboard-modal').forEach(el => el.classList.remove('hidden')); 
+};
 window.closeLeaderboard = function() { document.querySelectorAll('#leaderboard-modal').forEach(el => el.classList.add('hidden')); };
+
 window.giveUpGame = function() {
     if (isPaused) return;
     if (confirm("게임을 포기하시겠습니까?\n(현재 도달한 레벨로 리더보드에 랭킹을 등록할 수 있습니다.)")) player.hp = 0; 
@@ -288,9 +300,7 @@ const mobParry = document.getElementById('mob-parry'); if(mobParry) mobParry.add
 const mobDash = document.getElementById('mob-dash'); if(mobDash) mobDash.addEventListener('touchstart', (e) => { e.preventDefault(); doDash(); }, {passive: false});
 const mobSkill = document.getElementById('mob-skill'); if(mobSkill) mobSkill.addEventListener('touchstart', (e) => { e.preventDefault(); doSkill(); }, {passive: false});
 
-// =========================================================
-// 스피드 밸런스 너프(하향) 적용 상태
-// =========================================================
+// 캐릭터 스탯 및 밸런스(하향 유지)
 const initPlayer = () => ({
     x: GAME_WIDTH / 2, y: GAME_HEIGHT - 100, speed: 2.2, radius: 25, hp: 100, maxHp: 100, exp: 0, maxExp: 200, level: 1, damage: 10,
     attackCount: 1, baseAttackCooldown: 30, attackCooldown: 0, attackQueue: 0, burstTimer: 0,
@@ -316,6 +326,9 @@ function spawnParticles(x, y, color, count) {
 }
 function spawnFireTrail(x, y) { let t = document.createElement('div'); t.className = 'fire-trail'; t.style.left = x + 'px'; t.style.top = y + 'px'; container.appendChild(t); setTimeout(() => t.remove(), 300); }
 
+// =====================================
+// 화려한 패링 불꽃 이펙트 추가
+// =====================================
 function createParryEffect(x, y) {
     let ring = document.createElement('div');
     ring.style.position = 'absolute'; ring.style.width = '50px'; ring.style.height = '50px';
@@ -759,8 +772,7 @@ window.selectAugment = function(type, name, icon, desc) {
     else if (type === 'weapon_fire') { player.weaponType = 'fire'; if(playerSwordEl) playerSwordEl.style.background = 'linear-gradient(to right, #e74c3c, #f1c40f)'; } else if (type === 'weapon_ice') { player.weaponType = 'ice'; if(playerSwordEl) playerSwordEl.style.background = 'linear-gradient(to right, #00ffff, #fff)'; } else if (type === 'weapon_lightning') { player.weaponType = 'lightning'; if(playerSwordEl) playerSwordEl.style.background = 'linear-gradient(to right, #f1c40f, #00ffff)'; } else if (type === 'weapon_dark') { player.weaponType = 'dark'; if(playerSwordEl) playerSwordEl.style.background = 'linear-gradient(to right, #8e44ad, #2c3e50)'; player.lifesteal = 2; }
     else if (type === 'skill_dash') player.dashDamage = true; else if (type === 'skill_parry_heal') player.parryHeal = true; else if (type === 'skill_wave') player.waveChance = true; else if (type === 'skill') { player.hasSkill = true; if(skillStatusEl) skillStatusEl.classList.remove('hidden'); if(document.getElementById('btn-skill')) document.getElementById('btn-skill').classList.remove('hidden'); if(document.getElementById('mob-skill')) document.getElementById('mob-skill').classList.remove('hidden'); } else if (type === 'skill_cooldown') player.maxSkillCooldown = Math.max(180, player.maxSkillCooldown - 100);
 
-    const modal = document.getElementById('level-up-modal');
-    if(modal) modal.classList.add('hidden'); 
+    document.querySelectorAll('#level-up-modal').forEach(el => el.classList.add('hidden')); 
     updateUI(); isPaused = false;
     requestAnimationFrame(update);
 };
