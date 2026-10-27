@@ -36,9 +36,6 @@ window.addEventListener('resize', () => { GAME_WIDTH = container.clientWidth; GA
 let isPaused = true;
 let isMobileEnv = false; 
 
-// =========================================================
-// 동적 스타일 및 스크립트 주입 (포기 버튼 우측 하단 이동 포함)
-// =========================================================
 const style = document.createElement('style');
 style.innerHTML = `
     @media (min-width: 769px) { #mobile-controls { display: none !important; } }
@@ -73,11 +70,8 @@ style.innerHTML = `
     .stun-indicator { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); color: #f1c40f; font-weight: bold; font-size: 18px; text-shadow: 0 0 10px red; white-space: nowrap; animation: blink 0.3s infinite; z-index: 50; }
     @keyframes blink { 0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); } 50% { opacity: 0.5; transform: translateX(-50%) scale(1.1); } }
     
-    /* 대시 잔상을 투명하고 부드러운 유령 효과로 변경 */
     .dash-shadow { position: absolute; width: 50px; height: 50px; background-color: rgba(52, 152, 219, 0.2); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 5; animation: shadowFade 0.3s ease-out forwards; }
     @keyframes shadowFade { 0% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); } }
-
-    /* 화면 전체를 하얗게 만드는 눈뽕 플래시(screen-flash) CSS를 완벽히 제거했습니다. */
 
     #opening-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20, 25, 30, 0.95); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
     .title-text { font-size: 48px; font-weight: bold; text-shadow: 0 0 20px #3498db; margin-bottom: 10px; text-align: center; line-height: 1.2; }
@@ -127,13 +121,13 @@ style.innerHTML = `
     .slash-dark { filter: drop-shadow(0 0 15px #8e44ad) !important; }
     .unparryable-attack { background: #e74c3c !important; filter: drop-shadow(0 0 15px #e74c3c) !important; clip-path: none !important; border-radius: 50%; }
 
-    /* 포기(Give Up) 버튼: 우측 하단으로 이동. 모바일에서는 조작버튼과 겹치지 않게 약간 위로 조정 */
     #btn-giveup { position: absolute; bottom: 20px; right: 20px; z-index: 900; background: #c0392b; color: white; border: 2px solid #fff; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; box-shadow: 0 0 15px rgba(0,0,0,0.8); transition: transform 0.2s; display: none; }
     #btn-giveup:hover { transform: scale(1.1); }
     @media (max-width: 768px) { #btn-giveup { bottom: 130px !important; right: 15px !important; opacity: 0.8; } }
 `;
 document.head.appendChild(style);
 
+// HTML 인젝션 (모든 버튼은 window 전역 객체의 함수 호출로 강제 매핑됨)
 container.insertAdjacentHTML('beforeend', `
     <div id="opening-screen">
         <div class="title-text">PARRY STRIKE<br><span style="font-size:24px; color:#e74c3c;">Boss Rush</span></div>
@@ -153,20 +147,21 @@ container.insertAdjacentHTML('beforeend', `
             </div>
         </div>
 
-        <button id="btn-start-game" class="menu-btn">▶ 게임 시작</button>
-        <button id="btn-show-lb-main" class="menu-btn" style="border-color: #9b59b6; color: #9b59b6;">🏆 랭킹 리더보드 확인</button>
-        <button id="btn-show-tut-main" class="menu-btn menu-btn-tutorial" style="margin-top: 10px;">📖 패턴 요약 보기 (필독)</button>
+        <button class="menu-btn" onclick="window.startGame()">▶ 게임 시작</button>
+        <button class="menu-btn" style="border-color: #9b59b6; color: #9b59b6;" onclick="window.showLeaderboard()">🏆 랭킹 리더보드 확인</button>
+        <button class="menu-btn menu-btn-tutorial" style="margin-top: 10px;" onclick="window.showTutorial()">📖 패턴 요약 보기 (필독)</button>
     </div>
 
-    <!-- 포기 버튼 우측 하단 -->
-    <button id="btn-giveup">🏳️ 포기</button>
+    <!-- 포기 버튼 -->
+    <button id="btn-giveup" onclick="window.giveUpGame()">🏳️ 포기</button>
 
+    <!-- 내부 리더보드 모달 -->
     <div id="leaderboard-modal" class="modal hidden" style="width: 90%; max-width: 600px; height: 75vh; display: flex; flex-direction: column;">
         <h2 style="color: #f1c40f; margin-top: 0; flex-shrink: 0;">🏆 랭킹 리더보드</h2>
         <div style="flex: 1; width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 15px; background: white;">
             <iframe class="leaderboard-iframe" src="https://docs.google.com/spreadsheets/d/190rTIf_nsxscNZ3qhOHnHQgTBXnRvxGke9gcQ7CVyuQ/htmlembed?widget=false&headers=false&chrome=false"></iframe>
         </div>
-        <button id="btn-close-lb" class="tut-close" style="flex-shrink: 0;">닫기</button>
+        <button class="tut-close" style="flex-shrink: 0;" onclick="window.closeLeaderboard()">닫기</button>
     </div>
 
     <div id="tutorial-modal" class="modal hidden">
@@ -188,7 +183,7 @@ container.insertAdjacentHTML('beforeend', `
             <span style="color:#e74c3c; font-weight:bold;">🟥 [빨간색 ❌] 폭격 레이저</span><br>
             - <b>패링 불가! ❌</b> 무조건 대시(💨)로 회피!
         </div>
-        <button id="btn-close-tut" class="tut-close">확인 완료</button>
+        <button class="tut-close" onclick="window.closeTutorial()">확인 완료</button>
     </div>
 `);
 
@@ -200,45 +195,34 @@ if (gameOverModal) {
         <div style="background: rgba(0,0,0,0.6); padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #f1c40f;">
             <h3 style="margin-top: 0; color: #f1c40f; font-size: 16px;">🏆 랭킹 등록</h3>
             <input type="text" id="nickname-input" placeholder="닉네임을 입력하세요" style="width: 85%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: none; font-size: 14px; text-align: center; color: black;">
-            <button class="restart-btn" id="btn-submit-score" style="background: #27ae60; margin-top: 0; padding: 12px;">기록 저장하기</button>
+            <button class="restart-btn" id="btn-submit-score" style="background: #27ae60; margin-top: 0; padding: 12px;" onclick="window.submitScore()">기록 저장하기</button>
         </div>
-        <button class="restart-btn" id="btn-show-lb-go" style="background: #8e44ad; padding: 12px; margin-bottom: 10px;">📊 리더보드 확인</button>
-        <button class="restart-btn" id="btn-restart-game" style="padding: 12px;">다시 시작하기</button>
+        <button class="restart-btn" style="background: #8e44ad; padding: 12px; margin-bottom: 10px;" onclick="window.showLeaderboard()">📊 리더보드 확인</button>
+        <button class="restart-btn" style="padding: 12px;" onclick="window.restartGame()">다시 시작하기</button>
     `;
 }
 
-// 이벤트 바인딩
-function bindEvents() {
-    if(document.getElementById('btn-start-game')) document.getElementById('btn-start-game').addEventListener('click', startGame);
-    if(document.getElementById('btn-show-tut-main')) document.getElementById('btn-show-tut-main').addEventListener('click', showTutorial);
-    if(document.getElementById('btn-show-lb-main')) document.getElementById('btn-show-lb-main').addEventListener('click', showLeaderboard);
-    if(document.getElementById('btn-close-tut')) document.getElementById('btn-close-tut').addEventListener('click', closeTutorial);
-    if(document.getElementById('btn-close-lb')) document.getElementById('btn-close-lb').addEventListener('click', closeLeaderboard);
-    if(document.getElementById('btn-submit-score')) document.getElementById('btn-submit-score').addEventListener('click', submitScore);
-    if(document.getElementById('btn-show-lb-go')) document.getElementById('btn-show-lb-go').addEventListener('click', showLeaderboard);
-    if(document.getElementById('btn-restart-game')) document.getElementById('btn-restart-game').addEventListener('click', restartGame);
-    
-    const btnGiveUp = document.getElementById('btn-giveup');
-    if(btnGiveUp) {
-        btnGiveUp.addEventListener('click', () => {
-            if (isPaused) return;
-            if (confirm("게임을 포기하시겠습니까?\n(현재 도달한 레벨로 리더보드에 랭킹을 등록할 수 있습니다.)")) player.hp = 0; 
-        });
-    }
-}
-bindEvents();
-
-function startGame() { 
-    document.getElementById('opening-screen').style.display = 'none'; 
+// =====================================
+// window 객체를 통해 함수 전역 노출 (오류 원천 차단)
+// =====================================
+window.startGame = function() { 
+    const openingScreen = document.getElementById('opening-screen');
+    if(openingScreen) openingScreen.style.display = 'none'; 
     const btnGiveUp = document.getElementById('btn-giveup');
     if(btnGiveUp) btnGiveUp.style.display = 'block'; 
     isPaused = false; 
-    spawnBosses(); updateUI(); requestAnimationFrame(update); 
-}
-function showTutorial() { document.getElementById('tutorial-modal').classList.remove('hidden'); }
-function closeTutorial() { document.getElementById('tutorial-modal').classList.add('hidden'); }
-function showLeaderboard() { document.getElementById('leaderboard-modal').classList.remove('hidden'); }
-function closeLeaderboard() { document.getElementById('leaderboard-modal').classList.add('hidden'); }
+    spawnBosses(); 
+    updateUI(); 
+    requestAnimationFrame(update); 
+};
+window.showTutorial = function() { document.getElementById('tutorial-modal').classList.remove('hidden'); };
+window.closeTutorial = function() { document.getElementById('tutorial-modal').classList.add('hidden'); };
+window.showLeaderboard = function() { document.getElementById('leaderboard-modal').classList.remove('hidden'); };
+window.closeLeaderboard = function() { document.getElementById('leaderboard-modal').classList.add('hidden'); };
+window.giveUpGame = function() {
+    if (isPaused) return;
+    if (confirm("게임을 포기하시겠습니까?\n(현재 도달한 레벨로 리더보드에 랭킹을 등록할 수 있습니다.)")) player.hp = 0; 
+};
 
 window.submitScore = function() {
     const nicknameInput = document.getElementById('nickname-input');
@@ -261,7 +245,7 @@ window.submitScore = function() {
     fetch(formUrl, { method: 'POST', mode: 'no-cors', body: formData })
         .then(() => { submitBtn.innerHTML = '✅ 전송 완료!'; submitBtn.style.background = '#34495e'; nicknameInput.disabled = true; })
         .catch(e => { submitBtn.innerHTML = '❌ 전송 실패 (재시도)'; submitBtn.disabled = false; });
-}
+};
 
 const originalBossEl = document.getElementById('boss');
 const originalBossUiEl = document.getElementById('boss-ui');
@@ -297,6 +281,7 @@ const mobParry = document.getElementById('mob-parry'); if(mobParry) mobParry.add
 const mobDash = document.getElementById('mob-dash'); if(mobDash) mobDash.addEventListener('touchstart', (e) => { e.preventDefault(); doDash(); }, {passive: false});
 const mobSkill = document.getElementById('mob-skill'); if(mobSkill) mobSkill.addEventListener('touchstart', (e) => { e.preventDefault(); doSkill(); }, {passive: false});
 
+// 캐릭터 스탯 및 밸런스(하향)
 const initPlayer = () => ({
     x: GAME_WIDTH / 2, y: GAME_HEIGHT - 100, speed: 2.2, radius: 25, hp: 100, maxHp: 100, exp: 0, maxExp: 200, level: 1, damage: 10,
     attackCount: 1, baseAttackCooldown: 30, attackCooldown: 0, attackQueue: 0, burstTimer: 0,
@@ -326,7 +311,6 @@ function spawnFireTrail(x, y) { let t = document.createElement('div'); t.classNa
 // 흰색 플래시 대신 화려한 패링 불꽃 이펙트 추가
 // =====================================
 function createParryEffect(x, y) {
-    // 하늘색 파동
     let ring = document.createElement('div');
     ring.style.position = 'absolute'; ring.style.width = '50px'; ring.style.height = '50px';
     ring.style.border = '4px solid #00ffff'; ring.style.borderRadius = '50%';
@@ -340,7 +324,6 @@ function createParryEffect(x, y) {
     container.appendChild(ring);
     setTimeout(() => ring.remove(), 400);
 
-    // 사방으로 튀는 불꽃 파티클
     for (let i = 0; i < 6; i++) {
         let spark = document.createElement('div');
         spark.style.position = 'absolute'; spark.style.width = '4px'; spark.style.height = '15px';
@@ -357,8 +340,6 @@ function createParryEffect(x, y) {
         setTimeout(() => spark.remove(), 300);
     }
 }
-
-function createDashShadow() { let shadow = document.createElement('div'); shadow.className = 'dash-shadow'; shadow.style.left = player.x + 'px'; shadow.style.top = player.y + 'px'; container.appendChild(shadow); setTimeout(() => shadow.remove(), 300); }
 
 function spawnBosses() {
     bosses.forEach(b => { b.el.remove(); b.uiEl.remove(); }); bosses = [];
@@ -383,6 +364,12 @@ function spawnBosses() {
         bosses.push({ x: spacing * (i + 1), y: 100 + (Math.random() * 80), radius: 50, hp: maxHp, maxHp: maxHp, state: 'idle', stateTimer: Math.floor(Math.random() * 40), vx: 1.2 * (i % 2 === 0 ? 1 : -1), vy: 0, dashSpeed: 12 + (bossLevel * 0.5), dashHitDelay: 0, freezeStack: 0, isFrozen: false, freezeTimer: 0, el: el, uiEl: uiEl, hpFill: hpFill });
     }
     const topBossName = document.getElementById('boss-name'); if(topBossName) topBossName.innerText = `WAVE ${bossLevel} (적 ${bossLevel}마리)`;
+}
+
+function createBlaster(x, y, angle, owner) {
+    playSound('parry'); const el = document.createElement('div'); el.className = 'gaster-blaster'; el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
+    const eye = document.createElement('div'); eye.innerText = '❌'; eye.style.position = 'absolute'; eye.style.right = '-10px'; eye.style.top = '-15px'; eye.style.fontSize = '20px'; eye.style.textShadow = '0 0 10px #f00'; el.appendChild(eye);
+    const telegraph = document.createElement('div'); telegraph.className = 'blaster-telegraph'; el.appendChild(telegraph); container.appendChild(el); blasters.push({ x, y, angle, timer: 35, el, telegraph, owner });
 }
 
 function takeDamage(amount) {
@@ -426,13 +413,6 @@ function doSkill() {
         playSound('swing'); player.skillCooldown = player.maxSkillCooldown; playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
         spawnParticles(player.x, player.y, '#f1c40f', 30); for (let i = 0; i < 8; i++) spawnProjectile(player.x, player.y, (Math.PI / 4) * i, 10, player.damage * player.skillDamageMult, false, 120, true);
     }
-}
-
-function doDash() {
-    if (isPaused || player.isStunned || player.isPulled || player.dashCooldown > 0 || player.isDashing) return;
-    playSound('swing'); player.isDashing = true; player.dashTimer = 12; player.dashCooldown = 90;
-    let dx = 0, dy = 0; if (joystickDelta.x !== 0 || joystickDelta.y !== 0) { dx = joystickDelta.x; dy = joystickDelta.y; } else { if (keys.w) dy -= 1; if (keys.s) dy += 1; if (keys.a) dx -= 1; if (keys.d) dx += 1; if (dx === 0 && dy === 0) dx = 1; }
-    let len = Math.hypot(dx, dy); player.dashDir = { x: dx/len, y: dy/len }; playerEl.style.opacity = '0.4'; setTimeout(() => playerEl.style.opacity = '1', 200);
 }
 
 function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = false, isGrab = false, owner = null, isLaser = false, isUnparryable = false, customClass = '') {
@@ -519,6 +499,12 @@ function bossLogic() {
                 if (boss.stateTimer >= 60 && boss.stateTimer <= 80) { if (boss.stateTimer === 60) { boss.el.classList.remove('boss-telegraph'); let warn = boss.el.querySelector('.grab-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); } if (boss.stateTimer % 2 === 0) { playSound('swing'); spawnProjectile(boss.x, boss.y, angleToPlayer, 15, 5, true, 40, false, false, boss, false, false, 'slash-green'); } }
                 if (boss.stateTimer > 100) resetBossState(boss);
             }
+            else if (boss.state === 'pattern7') { 
+                if (boss.stateTimer === 1) { boss.el.style.backgroundColor = '#000'; boss.el.style.boxShadow = '0 0 20px #f00'; }
+                boss.x += Math.cos(angleToPlayer) * 1.5; boss.y += Math.sin(angleToPlayer) * 1.5; const timings = [30, 70, 100, 150, 180, 230, 260];
+                if (timings.includes(boss.stateTimer)) { let orbitAngle = (boss.stateTimer * 0.1) + Math.random(); let bx = player.x + Math.cos(orbitAngle) * 250; let by = player.y + Math.sin(orbitAngle) * 250; createBlaster(bx, by, Math.atan2(player.y - by, player.x - bx), boss); }
+                if (boss.stateTimer > 300) { resetBossState(boss); }
+            }
         }
         boss.x = Math.max(boss.radius, Math.min(GAME_WIDTH - boss.radius, boss.x)); boss.y = Math.max(boss.radius, Math.min(GAME_HEIGHT - boss.radius, boss.y)); boss.el.style.left = boss.x + 'px'; boss.el.style.top = boss.y + 'px'; boss.uiEl.style.left = boss.x + 'px'; boss.uiEl.style.top = (boss.y - boss.radius - 15) + 'px';
     });
@@ -552,7 +538,7 @@ function update() {
         if(parryStatusEl) { parryStatusEl.innerText = "사슬에 끌려가는 중!!"; parryStatusEl.style.color = "orange"; }
         if (player.pullTimer <= 0) player.isPulled = false;
     } else if (player.isDashing) {
-        player.x += player.dashDir.x * 15; player.y += player.dashDir.y * 15; player.x = Math.max(player.radius, Math.min(GAME_WIDTH - player.radius, player.x)); player.y = Math.max(player.radius, Math.min(GAME_HEIGHT - player.radius, player.y)); player.dashTimer--; if (player.dashTimer % 2 === 0) createDashShadow();
+        player.x += player.dashDir.x * 15; player.y += player.dashDir.y * 15; player.x = Math.max(player.radius, Math.min(GAME_WIDTH - player.radius, player.x)); player.y = Math.max(player.radius, Math.min(GAME_HEIGHT - player.radius, player.y)); player.dashTimer--; 
         if (player.dashDamage) { bosses.forEach(b => { if (getDistance(player.x, player.y, b.x, b.y) < player.radius + b.radius + 30) { if (b.dashHitDelay <= 0) { b.hp -= player.damage; gainExp(player.damage); bossHitEffect(b, b.x, b.y, player.damage, true); checkBossDeath(b); b.dashHitDelay = 30; } } }); }
         if (player.dashTimer <= 0) player.isDashing = false;
     } else if (!player.isParrying) {
@@ -673,17 +659,14 @@ function update() {
     requestAnimationFrame(update);
 }
 
-function restartGame() {
+window.restartGame = function() {
     player.hp = player.maxHp; player.x = GAME_WIDTH / 2; player.y = GAME_HEIGHT - 100;
     player.isParrying = false; player.parryTimer = 0; player.parryCooldown = 0; player.autoParryTimer = 0; 
     player.attackCooldown = 0; player.burstTimer = 0; player.attackQueue = 0; player.skillCooldown = 0; player.isDashing = false; player.dashTimer = 0; player.dashCooldown = 0; 
     player.isStunned = false; player.stunTimer = 0; player.isPulled = false; player.pullTimer = 0; player.pullTarget = null;
     
     projectiles.forEach(p => p.el.remove()); projectiles = []; blasters.forEach(b => b.el.remove()); blasters = [];
-    document.querySelectorAll('.unparryable-hit, .impact-effect, .damage-text, .particle, .fire-trail, .dash-shadow, .screen-flash').forEach(el => el.remove());
-    
-    const goModal = document.getElementById('game-over-modal');
-    if(goModal) goModal.classList.add('hidden');
+    document.getElementById('game-over-modal').classList.add('hidden');
 
     playerEl.classList.remove('player-grabbed', 'parrying', 'parry-deflect', 'parry-cd', 'hit-flash', 'player-stunned'); 
     
@@ -694,7 +677,7 @@ function restartGame() {
     spawnBosses(); updateUI(); renderAugments(); 
     isPaused = false; 
     requestAnimationFrame(update);
-}
+};
 
 function updateUI() {
     const pHP = document.getElementById('player-hp');
@@ -769,4 +752,4 @@ window.selectAugment = function(type, name, icon, desc) {
     if(modal) modal.classList.add('hidden'); 
     updateUI(); isPaused = false;
     requestAnimationFrame(update);
-}
+};
