@@ -162,8 +162,10 @@ container.insertAdjacentHTML('beforeend', `
         <button id="btn-show-tut-main" class="menu-btn menu-btn-tutorial" style="margin-top: 10px;" onclick="window.showTutorial()">📖 패턴 요약 보기 (필독)</button>
     </div>
 
+    <!-- 포기 버튼 -->
     <button id="btn-giveup" onclick="window.giveUpGame()">🏳️ 포기</button>
 
+    <!-- 내부 리더보드 모달 -->
     <div id="leaderboard-modal" class="modal hidden" style="width: 90%; max-width: 600px; height: 75vh; display: flex; flex-direction: column;">
         <h2 style="color: #f1c40f; margin-top: 0; flex-shrink: 0;">🏆 랭킹 리더보드</h2>
         <div style="flex: 1; width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 15px; background: white;">
@@ -202,14 +204,14 @@ if (gameOverModal) {
         <h2 style="color: #e74c3c; font-size: 32px; margin-top: 0; text-shadow: 2px 2px 5px black;">게임 종료</h2>
         <p id="final-score" style="font-size: 18px; margin-bottom: 15px;"></p>
         <div style="background: rgba(0,0,0,0.6); padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #f1c40f;">
-            <h3 style="margin-top: 0; color: #f1c40f; font-size: 16px;">🏆 랭킹 등록</h3>
+            <h3 style="margin-top: 0; color: #f1c40f; font-size: 16px;">🏆 랭킹 갱신 (최고 기록만 가능)</h3>
             <input type="text" id="nickname-input" placeholder="닉네임을 입력하세요" style="width: 85%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: none; font-size: 14px; text-align: center; color: black;">
-            <button class="restart-btn" id="btn-submit-score" style="background: #27ae60; margin-top: 0; padding: 12px;" onclick="window.submitScore()">기록 저장하기</button>
+            <button class="restart-btn" id="btn-submit-score" style="background: #27ae60; margin-top: 0; padding: 12px;" onclick="window.submitScore()">기록 갱신하기</button>
         </div>
         
         <div style="display: flex; gap: 10px; margin-bottom: 10px;">
             <button class="restart-btn" id="btn-show-lb-go" style="background: #8e44ad; padding: 12px; margin: 0; flex: 1;" onclick="window.showLeaderboard()">📊 리더보드</button>
-            <button class="restart-btn" style="background: #34495e; padding: 12px; margin: 0; flex: 1;" onclick="window.location.reload()">🏠 메인 메뉴</button>
+            <button class="restart-btn" style="background: #34495e; padding: 12px; margin: 0; flex: 1;" onclick="window.returnToMenu()">🏠 메인 메뉴</button>
         </div>
         
         <button class="restart-btn" id="btn-restart-game" style="padding: 12px; margin: 0;" onclick="window.restartGame()">다시 시작하기</button>
@@ -217,7 +219,7 @@ if (gameOverModal) {
 }
 
 // =========================================================
-// 전역(Window) 제어 함수 (캐시 방지 및 강제 초기화 포함)
+// 전역(Window) 제어 함수 (레벨 검증, 메인 메뉴 기능 포함)
 // =========================================================
 window.startGame = function() { 
     document.querySelectorAll('#opening-screen').forEach(el => el.style.display = 'none');
@@ -227,11 +229,12 @@ window.startGame = function() {
     updateUI(); 
     requestAnimationFrame(update); 
 };
+
 window.showTutorial = function() { document.querySelectorAll('#tutorial-modal').forEach(el => el.classList.remove('hidden')); };
 window.closeTutorial = function() { document.querySelectorAll('#tutorial-modal').forEach(el => el.classList.add('hidden')); };
 
 window.showLeaderboard = function() { 
-    // 구글 시트 URL 뒤에 현재시간(난수)을 붙여 항상 최신 데이터를 강제로 불러옵니다.
+    // 구글 시트 URL 뒤에 현재시간(난수)을 붙여 항상 최신 데이터를 강제로 불러옵니다 (캐시 무시).
     const nocacheUrl = "https://docs.google.com/spreadsheets/d/190rTIf_nsxscNZ3qhOHnHQgTBXnRvxGke9gcQ7CVyuQ/htmlembed?widget=false&headers=false&chrome=false&t=" + new Date().getTime();
     document.querySelectorAll('.leaderboard-iframe').forEach(iframe => iframe.src = nocacheUrl);
     document.querySelectorAll('#leaderboard-modal').forEach(el => el.classList.remove('hidden')); 
@@ -243,11 +246,23 @@ window.giveUpGame = function() {
     if (confirm("게임을 포기하시겠습니까?\n(현재 도달한 레벨로 리더보드에 랭킹을 등록할 수 있습니다.)")) player.hp = 0; 
 };
 
+window.returnToMenu = function() {
+    // 낡은 게임 상태를 완벽히 지우고 처음으로 되돌리기 위해 새로고침을 사용합니다.
+    window.location.reload();
+};
+
 window.submitScore = function() {
     const nicknameInput = document.getElementById('nickname-input');
     if(!nicknameInput) return;
     const nickname = nicknameInput.value.trim();
     if (!nickname) { alert("닉네임을 입력해주세요!"); return; }
+
+    // 이전 최고기록(로컬스토리지)과 비교하여 갱신할 수 있는지 확인
+    let bestLevel = parseInt(localStorage.getItem('parry_best_level')) || 0;
+    if (player.level <= bestLevel) {
+        alert(`기존 최고 기록(Lv.${bestLevel})보다 높아야 갱신이 가능합니다!\n더 높은 레벨에 도달해주세요.`);
+        return;
+    }
 
     const submitBtn = document.getElementById('btn-submit-score');
     submitBtn.innerHTML = '전송 중...'; submitBtn.disabled = true;
@@ -262,7 +277,13 @@ window.submitScore = function() {
     formData.append('entry.1748204136', dateStr);
 
     fetch(formUrl, { method: 'POST', mode: 'no-cors', body: formData })
-        .then(() => { submitBtn.innerHTML = '✅ 전송 완료!'; submitBtn.style.background = '#34495e'; nicknameInput.disabled = true; })
+        .then(() => { 
+            submitBtn.innerHTML = '✅ 갱신 완료!'; 
+            submitBtn.style.background = '#34495e'; 
+            nicknameInput.disabled = true; 
+            // 갱신에 성공했다면 최고기록을 덮어씁니다.
+            localStorage.setItem('parry_best_level', player.level); 
+        })
         .catch(e => { submitBtn.innerHTML = '❌ 전송 실패 (재시도)'; submitBtn.disabled = false; });
 };
 
@@ -300,7 +321,6 @@ const mobParry = document.getElementById('mob-parry'); if(mobParry) mobParry.add
 const mobDash = document.getElementById('mob-dash'); if(mobDash) mobDash.addEventListener('touchstart', (e) => { e.preventDefault(); doDash(); }, {passive: false});
 const mobSkill = document.getElementById('mob-skill'); if(mobSkill) mobSkill.addEventListener('touchstart', (e) => { e.preventDefault(); doSkill(); }, {passive: false});
 
-// 캐릭터 스탯 및 밸런스(하향 유지)
 const initPlayer = () => ({
     x: GAME_WIDTH / 2, y: GAME_HEIGHT - 100, speed: 2.2, radius: 25, hp: 100, maxHp: 100, exp: 0, maxExp: 200, level: 1, damage: 10,
     attackCount: 1, baseAttackCooldown: 30, attackCooldown: 0, attackQueue: 0, burstTimer: 0,
@@ -394,9 +414,9 @@ function createBlaster(x, y, angle, owner) {
 }
 
 function takeDamage(amount) {
-    player.hp -= amount; updateUI(); playSound('hit'); playerEl.classList.add('hit-flash'); container.classList.add('screen-shake');
+    player.hp -= amount; updateUI(); playSound('hit'); container.classList.add('screen-shake');
     spawnDamageText(player.x, player.y, amount, 'player'); spawnParticles(player.x, player.y, '#e74c3c', 10);
-    setTimeout(() => { playerEl.classList.remove('hit-flash'); container.classList.remove('screen-shake'); }, 300);
+    setTimeout(() => { container.classList.remove('screen-shake'); }, 300);
 }
 
 function bossHitEffect(targetBoss, x, y, damage, isCrit = false) {
@@ -678,6 +698,12 @@ function update() {
         document.querySelectorAll('#game-over-modal').forEach(el => el.classList.remove('hidden')); 
         isPaused = true; 
         document.querySelectorAll('#btn-giveup').forEach(el => el.style.display = 'none'); 
+        
+        // 게임 오버시 전송 버튼 초기화
+        const submitBtn = document.getElementById('btn-submit-score');
+        if (submitBtn) { submitBtn.innerHTML = '기록 갱신하기'; submitBtn.disabled = false; submitBtn.style.background = '#27ae60'; }
+        const nickInput = document.getElementById('nickname-input');
+        if (nickInput) { nickInput.disabled = false; }
         return;
     }
     
