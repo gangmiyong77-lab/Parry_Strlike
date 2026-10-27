@@ -1,13 +1,13 @@
 const container = document.getElementById('game-container');
 const playerEl = document.getElementById('player');
-const floatingCdEl = document.getElementById('floating-cd'); // ★ 이 줄이 빠져있었습니다!
+const floatingCdEl = document.getElementById('floating-cd'); // 누락되었던 변수 추가
 const parryStatusEl = document.getElementById('parry-status');
-const dashStatusEl = document.getElementById('dash-status'); // (HTML에 id 추가됨에 따라 가져오기 방식 변경)
+const dashStatusEl = document.getElementById('dash-status');
 const skillStatusEl = document.getElementById('skill-status');
 const playerSwordEl = document.getElementById('player-sword');
 
 let isPaused = true;
-let isMobileEnv = false;
+let isMobileEnv = false; 
 
 // 오디오 설정
 const audioDead = new Audio('./Dead.mp3'); const audioAttack1 = new Audio('./Attack1.mp3'); const audioAttack2 = new Audio('./Attack2.mp3'); const audioParry = new Audio('./Parry.mp3'); const audioParryed = new Audio('./Parryed.mp3'); const audioSwing = new Audio('./Swing.mp3');
@@ -88,7 +88,13 @@ function spawnParticles(x, y, color, count) {
         let p = document.createElement('div'); p.className = 'particle'; p.style.backgroundColor = color; p.style.width = (Math.random() * 6 + 4) + 'px'; p.style.height = p.style.width; p.style.left = x + 'px'; p.style.top = y + 'px'; let angle = Math.random() * Math.PI * 2; let dist = Math.random() * 60 + 20; p.style.setProperty('--tx', Math.cos(angle) * dist + 'px'); p.style.setProperty('--ty', Math.sin(angle) * dist + 'px'); container.appendChild(p); setTimeout(() => p.remove(), 400);
     }
 }
-function createScreenFlash() { let flash = document.createElement('div'); flash.className = 'screen-flash'; container.appendChild(flash); setTimeout(() => flash.remove(), 300); }
+function spawnFireTrail(x, y) { let t = document.createElement('div'); t.className = 'fire-trail'; t.style.left = x + 'px'; t.style.top = y + 'px'; container.appendChild(t); setTimeout(() => t.remove(), 300); }
+
+// 눈 아픈 화면 흰색 점멸(눈뽕) 효과 완전히 비활성화
+function createScreenFlash() { 
+    // let flash = document.createElement('div'); flash.className = 'screen-flash'; container.appendChild(flash); setTimeout(() => flash.remove(), 300); 
+}
+
 function createDashShadow() { let shadow = document.createElement('div'); shadow.className = 'dash-shadow'; shadow.style.left = player.x + 'px'; shadow.style.top = player.y + 'px'; container.appendChild(shadow); setTimeout(() => shadow.remove(), 300); }
 
 function spawnBosses() {
@@ -274,7 +280,7 @@ function bossLogic() {
                 if(boss.stateTimer === 30) { playSound('swing'); boss.el.classList.remove('eye-glow'); boss.el.classList.add('boss-attack-anim'); spawnProjectile(boss.x, boss.y, angleToPlayer, 12, 20, true, 100, false, false, boss); }
                 if(boss.stateTimer > 70) resetBossState(boss);
             }
-            else if (boss.state === 'pattern5') { // 돌진 패턴
+            else if (boss.state === 'pattern5') {
                 if (boss.stateTimer === 1) {
                     boss.el.style.backgroundColor = '#f1c40f'; boss.el.classList.add('boss-telegraph', 'boss-shake');
                     let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'dash-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 10px red'; boss.el.appendChild(warning);
@@ -288,7 +294,7 @@ function bossLogic() {
                     if (getDistance(boss.x, boss.y, player.x, player.y) < player.radius + boss.radius) {
                         if (player.isDashing) { } 
                         else if (player.isParrying || player.autoParryTimer > 0) { 
-                            createScreenFlash(); spawnParticles(player.x, player.y, '#0ff', 40); player.autoParryTimer = 6; playSound('parryed'); player.isParrying = false; playerEl.classList.remove('parrying', 'parry-cd'); playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
+                            spawnParticles(player.x, player.y, '#0ff', 40); player.autoParryTimer = 6; playSound('parryed'); player.isParrying = false; playerEl.classList.remove('parrying', 'parry-cd'); playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
                             if (player.parryHeal) { player.hp = Math.min(player.maxHp, player.hp + 20); spawnDamageText(player.x, player.y, 20, 'heal'); }
                             player.parryCooldown = 0; parryStatusEl.innerText = "돌진 저지 성공! (보스 기절)"; parryStatusEl.style.color = "#2ecc71";
                             boss.hp -= 100; gainExp(50); boss.stateTimer = 90; bossHitEffect(boss, boss.x, boss.y, 100, true); checkBossDeath(boss);
@@ -297,19 +303,18 @@ function bossLogic() {
                 }
                 if (boss.stateTimer >= 90) { boss.el.classList.remove('boss-dashing'); resetBossState(boss); }
             }
-            else if (boss.state === 'pattern6') { // 보라색 스턴 공격 (패링 가능, 맞으면 2초 스턴)
+            else if (boss.state === 'pattern6') {
                 if (boss.stateTimer === 1) {
                     boss.el.style.backgroundColor = '#8e44ad'; boss.el.classList.add('boss-telegraph', 'boss-shake');
                     let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'grab-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 15px #8e44ad'; boss.el.appendChild(warning);
                 }
                 if (boss.stateTimer === 60) {
                     playSound('swing'); boss.el.style.backgroundColor = '#c0392b'; boss.el.classList.remove('boss-telegraph', 'boss-shake'); let warn = boss.el.querySelector('.grab-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); 
-                    // 패링 가능하도록 isUnparryable=false, 스턴 효과를 위해 isGrab=true 적용
                     spawnProjectile(boss.x, boss.y, angleToPlayer, 20, 0, true, 120, false, true, boss, false, false, 'slash-purple');
                 }
                 if (boss.stateTimer > 100) resetBossState(boss);
             }
-            else if (boss.state === 'pattern9') { // 체인 끌어오기
+            else if (boss.state === 'pattern9') {
                 if (boss.stateTimer === 1) {
                     boss.el.style.backgroundColor = '#7f8c8d'; boss.el.classList.add('boss-telegraph');
                     let warning = document.createElement('div'); warning.innerText = '⛓️'; warning.className = 'chain-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '30px'; warning.style.textShadow = '0 0 15px #7f8c8d'; boss.el.appendChild(warning);
@@ -320,7 +325,7 @@ function bossLogic() {
                 }
                 if (boss.stateTimer > 90) resetBossState(boss);
             }
-            else if (boss.state === 'pattern8') { // 초록색 연사 레이저
+            else if (boss.state === 'pattern8') {
                 if (boss.stateTimer === 1) {
                     boss.el.style.backgroundColor = '#2ecc71'; boss.el.classList.add('boss-telegraph');
                     let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'grab-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 15px #2ecc71'; boss.el.appendChild(warning);
@@ -333,7 +338,7 @@ function bossLogic() {
                 }
                 if (boss.stateTimer > 100) resetBossState(boss);
             }
-            else if (boss.state === 'pattern7') { // 폭격 레이저
+            else if (boss.state === 'pattern7') {
                 if (boss.stateTimer === 1) { boss.el.style.backgroundColor = '#000'; boss.el.style.boxShadow = '0 0 20px #f00'; }
                 boss.x += Math.cos(angleToPlayer) * 1.5; boss.y += Math.sin(angleToPlayer) * 1.5; const timings = [30, 70, 100, 150, 180, 230, 260];
                 if (timings.includes(boss.stateTimer)) { let orbitAngle = (boss.stateTimer * 0.1) + Math.random(); let bx = player.x + Math.cos(orbitAngle) * 250; let by = player.y + Math.sin(orbitAngle) * 250; createBlaster(bx, by, Math.atan2(player.y - by, player.x - bx), boss); }
@@ -358,7 +363,6 @@ function update() {
     if (player.dashCooldown > 0) player.dashCooldown--;
     if (player.dashCooldown <= 0) { dashStatusEl.innerText = "[Shift] 대시 준비 완료"; dashStatusEl.style.color = "#2ecc71"; } else { dashStatusEl.innerText = `대시 쿨타임: ${(player.dashCooldown/60).toFixed(1)}초`; dashStatusEl.style.color = "#7f8c8d"; }
 
-    // CC기 우선순위: 스턴 > 끌려감 > 대시 > 걷기
     if (player.isStunned) {
         player.stunTimer--;
         parryStatusEl.innerText = `기절됨! (${Math.ceil(player.stunTimer/60)}초)`; parryStatusEl.style.color = "red";
@@ -448,9 +452,7 @@ function update() {
             if (getDistance(p.x, p.y, player.x, player.y) < player.radius + p.radius) {
                 if (player.isDashing) { } 
                 else if ((player.isParrying || player.autoParryTimer > 0) && !p.isUnparryable) {
-                    let isLaser = p.el.classList.contains('slash-green'); let isAutoParry = (player.autoParryTimer > 0 && !player.isParrying);
-
-                    if (!isAutoParry) { createScreenFlash(); if (player.parryHeal) { player.hp = Math.min(player.maxHp, player.hp + 20); spawnDamageText(player.x, player.y, 20, 'heal'); } }
+                    let isAutoParry = (player.autoParryTimer > 0 && !player.isParrying);
 
                     spawnParticles(player.x, player.y, '#0ff', 20); player.autoParryTimer = 6; playSound('parryed'); player.isParrying = false; 
                     playerEl.classList.remove('parrying', 'parry-cd'); playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
@@ -473,7 +475,7 @@ function update() {
                     let isChain = p.el.classList.contains('slash-chain');
                     
                     if (p.isGrab) {
-                        player.isStunned = true; player.stunTimer = 120; // 패링 못하면 2초 기절
+                        player.isStunned = true; player.stunTimer = 120; // 2초 기절
                         takeDamage(20); 
                         let stunFx = document.createElement('div'); stunFx.className = 'stun-flash'; container.appendChild(stunFx); setTimeout(() => stunFx.remove(), 300);
                         p.el.remove(); projectiles.splice(i, 1);
@@ -534,6 +536,7 @@ function renderAugments() {
     histDiv.innerHTML = '';
     player.augments.forEach(aug => {
         const iconEl = document.createElement('div'); iconEl.className = 'history-icon'; iconEl.innerText = aug.icon; 
+        
         const tooltip = document.createElement('div'); tooltip.className = 'custom-tooltip';
         tooltip.innerHTML = `<strong>${aug.name}</strong><br>${aug.desc}<br><span style="color:#f1c40f">보유: ${aug.count}개</span>`;
         iconEl.appendChild(tooltip);
@@ -548,6 +551,7 @@ function renderAugments() {
 
 function showLevelUpModal() {
     isPaused = true; const modal = document.getElementById('level-up-modal'); modal.classList.remove('hidden');
+
     const baseAugmentPool = [
         { id: 'damage', name: '⚔️ 예리한 칼날', desc: '평타 데미지 +5', unique: false, icon: '⚔️' },
         { id: 'cooldown', name: '⚡ 가벼운 몸놀림', desc: '평타 공격 쿨타임 감소', unique: false, icon: '🏃' },
