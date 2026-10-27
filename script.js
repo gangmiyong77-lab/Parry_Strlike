@@ -1,29 +1,199 @@
 const container = document.getElementById('game-container');
 const playerEl = document.getElementById('player');
-const floatingCdEl = document.getElementById('floating-cd') || document.createElement('div');
+const floatingCdEl = document.getElementById('floating-cd');
 const parryStatusEl = document.getElementById('parry-status');
 const skillStatusEl = document.getElementById('skill-status');
-const dashStatusEl = document.getElementById('dash-status') || (() => {
-    let el = document.createElement('div'); el.id = 'dash-status'; el.style.marginTop = '5px'; el.style.fontWeight = 'bold'; el.style.fontSize = '14px';
-    parryStatusEl.parentNode.insertBefore(el, parryStatusEl.nextSibling); return el;
-})();
 
-// 플레이어 검 생성
+// 대시 UI 텍스트 안전하게 추가
+let dashStatusEl = document.getElementById('dash-status');
+if (!dashStatusEl && parryStatusEl && parryStatusEl.parentNode) {
+    dashStatusEl = document.createElement('div');
+    dashStatusEl.id = 'dash-status';
+    dashStatusEl.style.marginTop = '5px'; dashStatusEl.style.fontWeight = 'bold'; dashStatusEl.style.fontSize = '14px';
+    parryStatusEl.parentNode.insertBefore(dashStatusEl, parryStatusEl.nextSibling);
+}
+
+// 플레이어 검 요소 동적 생성
 if (!document.getElementById('player-sword')) {
     const sw = document.createElement('div'); sw.id = 'player-sword'; playerEl.appendChild(sw);
 }
 const playerSwordEl = document.getElementById('player-sword');
 
-// UI 및 스타일 압축 로드 (잘림 방지용)
+// ================= 동적 UI 및 CSS 스타일 자동 생성 =================
 const style = document.createElement('style');
-style.innerHTML = `@media (min-width:769px){#mobile-controls{display:none!important}}#mobile-controls{position:absolute;bottom:30px;left:0;width:100%;display:flex;justify-content:space-between;padding:0 30px;box-sizing:border-box;z-index:100;pointer-events:none;touch-action:none}#joystick-area{width:130px;height:130px;border-radius:50%;background:rgba(0,0,0,.4);position:relative;pointer-events:auto}#joystick-knob{width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.8);position:absolute;top:40px;left:40px}#action-btns{display:grid;grid-template-columns:1fr 1fr;gap:15px;pointer-events:auto}.mob-btn{width:60px;height:60px;border-radius:50%;background:rgba(0,0,0,.5);border:2px solid rgba(255,255,255,.5);color:#fff;font-size:24px;display:flex;justify-content:center;align-items:center;user-select:none}.mob-btn:active{background:rgba(255,255,255,.5)}.mob-btn.hidden{display:none!important}#player{background:#3498db;border:2px solid #fff;border-radius:50%;display:flex;justify-content:center;align-items:center;z-index:20;position:relative;transition:filter .2s}#player-sword{position:absolute;width:45px;height:10px;background:#bdc3c7;left:25px;top:20px;border-radius:5px;transform-origin:left center;transition:all .3s;z-index:-1}.attack-anim #player-sword{animation:playerSwing .2s ease-out}@keyframes playerSwing{0%,100%{transform:rotate(0deg)}50%{transform:rotate(140deg)}}.ig-eyes{position:absolute;top:12px;width:100%;display:flex;justify-content:center;gap:6px;z-index:5;pointer-events:none}.ig-eye{width:12px;height:12px;background:#fff;border-radius:50%;display:flex;justify-content:center;align-items:center;box-shadow:0 0 3px rgba(0,0,0,.5)}.ig-pupil{width:6px;height:6px;background:#000;border-radius:50%;transition:.2s}.eye-glow .ig-pupil{background:red;box-shadow:0 0 10px red;transform:scale(1.2)}.ig-boss-weapon{position:absolute;top:20px;left:-30px;width:50px;height:12px;background:#7f8c8d;border-radius:4px;transform-origin:right center;animation:igBossWeaponIdle 2s infinite alternate;z-index:-1}.boss-attack-anim .ig-boss-weapon{animation:igBossSwing .2s ease-out}@keyframes igBossWeaponIdle{0%{transform:rotate(-10deg)}100%{transform:rotate(10deg)}}@keyframes igBossSwing{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-130deg)}}.boss-slime{background:rgba(46,204,113,.8)!important;border:3px solid #27ae60!important;box-shadow:inset 0 0 15px #2ecc71}.boss-helmet{position:absolute;top:-10px;left:5px;width:40px;height:20px;background:#7f8c8d;border-radius:15px 15px 0 0;border:2px solid #2c3e50;z-index:6}.boss-crown{position:absolute;top:-15px;left:5px;width:40px;height:20px;background:linear-gradient(#f1c40f,#e67e22);clip-path:polygon(0 0,20% 100%,50% 0,80% 100%,100% 0,100% 100%,0 100%);z-index:6}.boss-horns{position:absolute;top:-20px;width:100%;display:flex;justify-content:space-between;padding:0 5px;box-sizing:border-box}.boss-horn{width:12px;height:25px;background:#c0392b;clip-path:polygon(50% 0,0 100%,100% 100%);z-index:5}.boss-mecha{background:#34495e!important;border:3px solid #0ff!important;border-radius:12px!important;box-shadow:0 0 15px #0ff}.boss-visor{position:absolute;top:15px;left:10px;width:30px;height:10px;background:#0ff;box-shadow:0 0 15px #0ff;z-index:6;border-radius:5px}.boss-cosmic{background:#000!important;border:3px dotted #9b59b6!important;box-shadow:0 0 30px #8e44ad,inset 0 0 20px #fff!important}.boss-core{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20px;height:20px;background:#fff;border-radius:50%;box-shadow:0 0 20px #fff;animation:pulseCore 1s infinite alternate;z-index:4}@keyframes pulseCore{0%{transform:translate(-50%,-50%) scale(1)}100%{transform:translate(-50%,-50%) scale(1.5)}}.player-stunned{background:#9b59b6!important;box-shadow:0 0 20px #8e44ad,inset 0 0 15px #000!important;animation:stunShake .1s infinite;filter:grayscale(.3)}@keyframes stunShake{0%{transform:translate(2px,1px) rotate(0)}20%{transform:translate(-3px,0) rotate(1deg)}40%{transform:translate(1px,-1px) rotate(1deg)}60%{transform:translate(-3px,1px) rotate(0)}80%{transform:translate(-1px,-1px) rotate(1deg)}100%{transform:translate(1px,-2px) rotate(-1deg)}}.stun-indicator{position:absolute;top:-35px;left:50%;transform:translateX(-50%);color:#f1c40f;font-weight:700;font-size:18px;text-shadow:0 0 10px red;white-space:nowrap;animation:blink .3s infinite;z-index:50}@keyframes blink{0%,100%{opacity:1;transform:translateX(-50%) scale(1)}50%{opacity:.5;transform:translateX(-50%) scale(1.1)}}.stun-flash{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(142,68,173,.4);z-index:999;pointer-events:none;animation:fadeOut .3s forwards}@keyframes fadeOut{to{opacity:0}}#opening-screen{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(20,25,30,.95);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff}.title-text{font-size:48px;font-weight:700;text-shadow:0 0 20px #3498db;margin-bottom:10px;text-align:center;line-height:1.2}.subtitle-text{font-size:18px;color:#aaa;margin-bottom:30px}.clash-container{position:relative;width:300px;height:120px;margin-bottom:30px;display:flex;align-items:center}.clash-char{width:50px;height:50px;border-radius:50%;position:absolute;border:2px solid #fff;box-shadow:0 0 15px rgba(255,255,255,.5);display:flex;align-items:center}.clash-player{background:#3498db;left:0;animation:clashLeft 2.5s infinite;justify-content:flex-end}.intro-sword{position:absolute;right:-30px;top:20px;width:40px;height:8px;background:#bdc3c7;border-radius:4px;transform-origin:left center;animation:introSwingPlayer 2.5s infinite}.clash-boss{background:#8e44ad;right:0;border:4px solid #f1c40f;animation:clashRight 2.5s infinite;justify-content:flex-start}.intro-boss-weapon{position:absolute;left:-40px;top:20px;width:50px;height:12px;background:#2c3e50;border-radius:4px;transform-origin:right center;animation:introSwingBoss 2.5s infinite}.clash-spark{position:absolute;left:135px;width:30px;height:30px;font-size:40px;line-height:30px;text-align:center;opacity:0;animation:sparkAnim 2.5s infinite;z-index:10}@keyframes clashLeft{0%,100%,70%{left:0}15%,35%,55%{left:100px}25%,45%{left:80px}}@keyframes clashRight{0%,100%,70%{right:0}15%,35%,55%{right:100px}25%,45%{right:80px}}@keyframes introSwingPlayer{0%,100%,10%,25%,45%,70%{transform:rotate(-40deg)}15%,35%,55%{transform:rotate(45deg)}}@keyframes introSwingBoss{0%,100%,10%,25%,45%,70%{transform:rotate(40deg)}15%,35%,55%{transform:rotate(-45deg)}}@keyframes sparkAnim{0%,100%,14%,20%,34%,40%,54%,65%{opacity:0}15%,35%{opacity:1;transform:scale(1.5)}55%{opacity:1;transform:scale(2);color:#ff0;text-shadow:0 0 20px red}}.menu-btn{padding:15px 40px;font-size:20px;font-weight:700;background:0 0;color:#fff;border:2px solid #3498db;border-radius:10px;cursor:pointer;transition:.2s;margin-top:10px;width:280px}.menu-btn:hover{background:#3498db;box-shadow:0 0 20px #3498db;transform:scale(1.05)}.menu-btn-tutorial{border-color:#f1c40f;color:#f1c40f;font-size:18px;padding:10px 30px;margin-top:20px}.menu-btn-tutorial:hover{background:#f1c40f;color:#000;box-shadow:0 0 20px #f1c40f}#tutorial-modal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:85%;max-width:500px;background:rgba(10,15,20,.98);border:2px solid #f1c40f;border-radius:15px;padding:25px;color:#fff;z-index:400;display:none;box-shadow:0 0 30px #f1c40f;overflow-y:auto;max-height:80%}.tut-header{font-size:22px;color:#f1c40f;border-bottom:1px solid #444;padding-bottom:10px;margin-bottom:15px;text-align:center;font-weight:700}.tut-section{margin-bottom:15px;line-height:1.6;font-size:15px}.tut-title{font-weight:700;color:#3498db;margin-bottom:8px;font-size:18px}.tut-close{display:block;margin:20px auto 0;padding:10px 30px;background:#3498db;color:#fff;border:none;border-radius:5px;font-weight:700;cursor:pointer}#augment-history{position:absolute;top:10px;right:10px;display:flex;gap:12px;z-index:50;flex-wrap:wrap-reverse;justify-content:flex-end;max-width:300px}.history-icon{position:relative;width:40px;height:40px;background:rgba(0,0,0,.8);border:1px solid #aaa;border-radius:5px;display:flex;justify-content:center;align-items:center;font-size:20px;box-shadow:0 0 5px #000;cursor:pointer;transition:.2s;pointer-events:auto}.history-icon:hover{border-color:#f1c40f;box-shadow:0 0 10px #f1c40f;z-index:60}.custom-tooltip{visibility:hidden;background-color:rgba(10,15,20,.95);color:#fff;text-align:right;border:2px solid #f1c40f;border-radius:8px;padding:12px;position:absolute;z-index:1000;top:120%;right:0;white-space:nowrap;font-size:14px;font-weight:400;opacity:0;transition:opacity .1s;pointer-events:none;box-shadow:0 0 15px #f1c40f;line-height:1.5}.history-icon:hover .custom-tooltip{visibility:visible;opacity:1}.stack-badge{position:absolute;bottom:-6px;right:-6px;background:#e74c3c;color:#fff;font-size:12px;font-weight:700;border-radius:50%;width:20px;height:20px;display:flex;justify-content:center;align-items:center;border:2px solid #fff;box-shadow:0 0 5px #000;z-index:55}.slash{position:absolute;pointer-events:none;z-index:15;display:flex;justify-content:center;align-items:center;clip-path:polygon(0 0,100% 50%,0 100%,30% 50%)}.slash-elemental{background:0 0!important;clip-path:none!important;filter:drop-shadow(0 0 10px currentColor)}.slash-purple{background:#8e44ad!important;filter:drop-shadow(0 0 10px #8e44ad)!important}.slash-green{background:#2ecc71!important;clip-path:none!important;border-radius:10px!important;filter:drop-shadow(0 0 8px #2ecc71)!important}.slash-chain{background:#95a5a6!important;width:50px!important;height:6px!important;clip-path:none!important;border-radius:0!important;filter:drop-shadow(0 0 5px #7f8c8d)!important}.slash-lightning{filter:drop-shadow(0 0 10px #0ff)!important}.slash-dark{filter:drop-shadow(0 0 15px #8e44ad)!important}.unparryable-attack{background:#e74c3c!important;filter:drop-shadow(0 0 15px #e74c3c)!important;clip-path:none!important;border-radius:50%}`;
+style.innerHTML = `
+    @media (min-width: 769px) { #mobile-controls { display: none !important; } }
+    #mobile-controls { position: absolute; bottom: 30px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 30px; box-sizing: border-box; z-index: 100; pointer-events: none; touch-action: none; }
+    #joystick-area { width: 130px; height: 130px; border-radius: 50%; background: rgba(0,0,0,0.4); position: relative; pointer-events: auto; }
+    #joystick-knob { width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.8); position: absolute; top: 40px; left: 40px; }
+    #action-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; pointer-events: auto; }
+    .mob-btn { width: 60px; height: 60px; border-radius: 50%; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.5); color: white; font-size: 24px; display: flex; justify-content: center; align-items: center; user-select: none; }
+    .mob-btn:active { background: rgba(255,255,255,0.5); }
+    .mob-btn.hidden { display: none !important; }
+
+    /* 플레이어 및 보스 인게임 외형 */
+    #player { background: #3498db; border: 2px solid #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; z-index: 20; position: relative; transition: filter 0.2s; }
+    #player-sword { position: absolute; width: 45px; height: 10px; background: #bdc3c7; left: 25px; top: 20px; border-radius: 5px; transform-origin: left center; transition: all 0.3s; z-index: -1; }
+    .attack-anim #player-sword { animation: playerSwing 0.2s ease-out; }
+    @keyframes playerSwing { 0% { transform: rotate(0deg); } 50% { transform: rotate(140deg); } 100% { transform: rotate(0deg); } }
+
+    .ig-eyes { position: absolute; top: 12px; width: 100%; display: flex; justify-content: center; gap: 6px; z-index: 5; pointer-events: none; }
+    .ig-eye { width: 12px; height: 12px; background: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; box-shadow: 0 0 3px rgba(0,0,0,0.5); }
+    .ig-pupil { width: 6px; height: 6px; background: black; border-radius: 50%; transition: 0.2s; }
+    .eye-glow .ig-pupil { background: red; box-shadow: 0 0 10px red; transform: scale(1.2); }
+
+    .ig-boss-weapon { position: absolute; top: 20px; left: -30px; width: 50px; height: 12px; background: #7f8c8d; border-radius: 4px; transform-origin: right center; animation: igBossWeaponIdle 2s infinite alternate; z-index: -1; }
+    .boss-attack-anim .ig-boss-weapon { animation: igBossSwing 0.2s ease-out; }
+    @keyframes igBossWeaponIdle { 0% { transform: rotate(-10deg); } 100% { transform: rotate(10deg); } }
+    @keyframes igBossSwing { 0% { transform: rotate(0deg); } 50% { transform: rotate(-130deg); } 100% { transform: rotate(0deg); } }
+
+    .boss-helmet { position: absolute; top: -10px; left: 5px; width: 40px; height: 20px; background: #7f8c8d; border-radius: 15px 15px 0 0; border: 2px solid #2c3e50; z-index: 6; }
+    .boss-crown { position: absolute; top: -15px; left: 5px; width: 40px; height: 20px; background: linear-gradient(#f1c40f, #e67e22); clip-path: polygon(0 0, 20% 100%, 50% 0, 80% 100%, 100% 0, 100% 100%, 0 100%); z-index: 6; }
+
+    /* 강력한 스턴(기절) 효과 CSS */
+    .player-stunned { background: #9b59b6 !important; box-shadow: 0 0 20px #8e44ad, inset 0 0 15px #000 !important; animation: stunShake 0.1s infinite; filter: grayscale(0.3); }
+    @keyframes stunShake { 0% { transform: translate(2px, 1px) rotate(0deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
+    .stun-indicator { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); color: #f1c40f; font-weight: bold; font-size: 18px; text-shadow: 0 0 10px red; white-space: nowrap; animation: blink 0.3s infinite; z-index: 50; }
+    @keyframes blink { 0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); } 50% { opacity: 0.5; transform: translateX(-50%) scale(1.1); } }
+    .stun-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(142, 68, 173, 0.4); z-index: 999; pointer-events: none; animation: fadeOut 0.3s forwards; }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+    /* 오프닝 화면 */
+    #opening-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20, 25, 30, 0.95); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
+    .title-text { font-size: 48px; font-weight: bold; text-shadow: 0 0 20px #3498db; margin-bottom: 10px; text-align: center; line-height: 1.2; }
+    .subtitle-text { font-size: 18px; color: #aaa; margin-bottom: 30px; }
+    
+    .clash-container { position: relative; width: 300px; height: 120px; margin-bottom: 30px; display: flex; align-items: center; }
+    .clash-char { width: 50px; height: 50px; border-radius: 50%; position: absolute; border: 2px solid white; box-shadow: 0 0 15px rgba(255,255,255,0.5); display: flex; align-items: center; }
+    .clash-player { background: #3498db; left: 0; animation: clashLeft 2.5s infinite; justify-content: flex-end; }
+    .intro-sword { position: absolute; right: -30px; top: 20px; width: 40px; height: 8px; background: #bdc3c7; border-radius: 4px; transform-origin: left center; animation: introSwingPlayer 2.5s infinite; }
+    .clash-boss { background: #8e44ad; right: 0; border: 4px solid #f1c40f; animation: clashRight 2.5s infinite; justify-content: flex-start; }
+    .intro-boss-weapon { position: absolute; left: -40px; top: 20px; width: 50px; height: 12px; background: #2c3e50; border-radius: 4px; transform-origin: right center; animation: introSwingBoss 2.5s infinite; }
+    .clash-spark { position: absolute; left: 135px; width: 30px; height: 30px; font-size: 40px; line-height: 30px; text-align: center; opacity: 0; animation: sparkAnim 2.5s infinite; z-index: 10; }
+    
+    @keyframes clashLeft { 0% { left: 0; } 15% { left: 100px; } 25% { left: 80px; } 35% { left: 100px; } 45% { left: 80px; } 55% { left: 100px; } 70% { left: 0; } 100% { left: 0; } }
+    @keyframes clashRight { 0% { right: 0; } 15% { right: 100px; } 25% { right: 80px; } 35% { right: 100px; } 45% { right: 80px; } 55% { right: 100px; } 70% { right: 0; } 100% { right: 0; } }
+    @keyframes introSwingPlayer { 0%, 10%, 25%, 45%, 70%, 100% { transform: rotate(-40deg); } 15%, 35%, 55% { transform: rotate(45deg); } }
+    @keyframes introSwingBoss { 0%, 10%, 25%, 45%, 70%, 100% { transform: rotate(40deg); } 15%, 35%, 55% { transform: rotate(-45deg); } }
+    @keyframes sparkAnim { 0%, 14% { opacity: 0; transform: scale(0.5); } 15% { opacity: 1; transform: scale(1.5); } 20% { opacity: 0; } 34% { opacity: 0; } 35% { opacity: 1; transform: scale(1.5); } 40% { opacity: 0; } 54% { opacity: 0; } 55% { opacity: 1; transform: scale(2); color: yellow; text-shadow: 0 0 20px red; } 65% { opacity: 0; } 100% { opacity: 0; } }
+
+    .menu-btn { padding: 15px 40px; font-size: 20px; font-weight: bold; background: transparent; color: white; border: 2px solid #3498db; border-radius: 10px; cursor: pointer; transition: 0.2s; margin-top: 10px; width: 280px; }
+    .menu-btn:hover { background: #3498db; box-shadow: 0 0 20px #3498db; transform: scale(1.05); }
+    .menu-btn-tutorial { border-color: #f1c40f; color: #f1c40f; font-size: 18px; padding: 10px 30px; margin-top: 20px; }
+    .menu-btn-tutorial:hover { background: #f1c40f; color: black; box-shadow: 0 0 20px #f1c40f; }
+
+    /* 리더보드 모달용 iframe 스타일 */
+    .leaderboard-iframe { width: 100%; height: 100%; border: none; border-radius: 10px; background: white; }
+
+    #tutorial-modal, #leaderboard-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 500px; background: rgba(10, 15, 20, 0.98); border: 2px solid #f1c40f; border-radius: 15px; padding: 25px; color: white; z-index: 400; display: none; box-shadow: 0 0 30px #f1c40f; overflow-y: auto; max-height: 80%; }
+    .tut-header { font-size: 22px; color: #f1c40f; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px; text-align: center; font-weight: bold; }
+    .tut-section { margin-bottom: 15px; line-height: 1.6; font-size: 15px; }
+    .tut-title { font-weight: bold; color: #3498db; margin-bottom: 8px; font-size: 18px; }
+    .tut-close { display: block; margin: 20px auto 0; padding: 10px 30px; background: #3498db; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-align: center; width: 100%; }
+
+    /* 증강 내역 UI 및 커스텀 툴팁 */
+    #augment-history { position: absolute; top: 10px; right: 10px; display: flex; gap: 12px; z-index: 50; flex-wrap: wrap-reverse; justify-content: flex-end; max-width: 300px; }
+    .history-icon { position: relative; width: 40px; height: 40px; background: rgba(0,0,0,0.8); border: 1px solid #aaa; border-radius: 5px; display: flex; justify-content: center; align-items: center; font-size: 20px; box-shadow: 0 0 5px black; cursor: pointer; transition: 0.2s; pointer-events: auto; }
+    .history-icon:hover { border-color: #f1c40f; box-shadow: 0 0 10px #f1c40f; z-index: 60; }
+    
+    .custom-tooltip { visibility: hidden; background-color: rgba(10, 15, 20, 0.95); color: #fff; text-align: right; border: 2px solid #f1c40f; border-radius: 8px; padding: 12px; position: absolute; z-index: 1000; top: 120%; right: 0; white-space: nowrap; font-size: 14px; font-weight: normal; opacity: 0; transition: opacity 0.1s; pointer-events: none; box-shadow: 0 0 15px #f1c40f; line-height: 1.5; }
+    .history-icon:hover .custom-tooltip { visibility: visible; opacity: 1; }
+    .stack-badge { position: absolute; bottom: -6px; right: -6px; background: #e74c3c; color: white; font-size: 12px; font-weight: bold; border-radius: 50%; width: 20px; height: 20px; display: flex; justify-content: center; align-items: center; border: 2px solid #fff; box-shadow: 0 0 5px black; z-index: 55; }
+
+    /* 투사체 스타일 (완벽하게 날카로운 반달(초승달) 검기 모양) */
+    .slash { 
+        position: absolute; pointer-events: none; z-index: 15; 
+        display: flex; justify-content: center; align-items: center; 
+        clip-path: polygon(0% 0%, 100% 50%, 0% 100%, 30% 50%);
+    }
+    
+    .slash-elemental { background: transparent !important; clip-path: none !important; filter: drop-shadow(0 0 10px currentColor); }
+    .slash-purple { background: #8e44ad !important; filter: drop-shadow(0 0 10px #8e44ad) !important; }
+    .slash-green { background: #2ecc71 !important; clip-path: none !important; border-radius: 10px !important; filter: drop-shadow(0 0 8px #2ecc71) !important; }
+    .slash-chain { background: #95a5a6 !important; width: 50px !important; height: 6px !important; clip-path: none !important; border-radius: 0 !important; filter: drop-shadow(0 0 5px #7f8c8d) !important; }
+    .slash-lightning { filter: drop-shadow(0 0 10px #00ffff) !important; }
+    .slash-dark { filter: drop-shadow(0 0 15px #8e44ad) !important; }
+    .unparryable-attack { background: #e74c3c !important; filter: drop-shadow(0 0 15px #e74c3c) !important; clip-path: none !important; border-radius: 50%; }
+`;
 document.head.appendChild(style);
 
-container.insertAdjacentHTML('beforeend', `<div id="opening-screen"><div class="title-text">PARRY STRIKE<br><span style="font-size:24px; color:#e74c3c;">Boss Rush</span></div><div class="subtitle-text">적의 패턴을 파악하고 전부 튕겨내세요!</div><div class="clash-container"><div class="clash-char clash-player"><div class="ig-eyes"><div class="ig-eye"><div class="ig-pupil"></div></div><div class="ig-eye"><div class="ig-pupil"></div></div></div><div class="intro-sword"></div></div><div class="clash-spark">💥</div><div class="clash-char clash-boss"><div class="boss-horns"><div class="boss-horn" style="transform:rotate(-20deg);"></div><div class="boss-horn" style="transform:rotate(20deg);"></div></div><div class="intro-crown"></div><div class="ig-eyes"><div class="ig-eye"><div class="ig-pupil"></div></div><div class="ig-eye"><div class="ig-pupil"></div></div></div><div class="intro-boss-weapon"></div></div></div><button class="menu-btn" onclick="startGame()">▶ 게임 시작</button><button class="menu-btn" style="border-color:#9b59b6;color:#9b59b6;" onclick="window.open('https://docs.google.com/spreadsheets/d/190rTIf_nsxscNZ3qhOHnHQgTBXnRvxGke9gcQ7CVyuQ/edit?usp=sharing','_blank')">🏆 랭킹 리더보드 확인</button><button class="menu-btn menu-btn-tutorial" style="margin-top:10px;" onclick="showTutorial()">📖 패턴 요약 보기 (필독)</button></div><button id="btn-giveup" style="position:absolute;top:15px;right:15px;z-index:90;background:#c0392b;color:#fff;border:2px solid #fff;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px;box-shadow:0 0 10px #000;display:none;">🏳️ 포기</button><div id="tutorial-modal" class="modal hidden"><div class="tut-header">📖 생존 가이드 & 패턴 요약</div><div class="tut-section">1️⃣ <b>우측 상단 증강 UI:</b> 마우스를 올리면 능력을 볼 수 있습니다.<br>2️⃣ <b>죽어도 초기화 안됨:</b> 얻은 능력치는 죽어도 유지됩니다!</div><div class="tut-section" style="text-align:left;"><div class="tut-title">⚠️ 보스 특수 공격 패턴</div><span style="color:#f1c40f;font-weight:700;">🟨 [노란색 ❗] 돌진 공격</span><br>- 패링 성공 시 100 데미지 + 기절<br><br><span style="color:#8e44ad;font-weight:700;">🟪 [보라색 반달] 스턴 검기</span><br>- <b>패링 가능!</b> 실패 시 <b>2초 기절</b><br><br><span style="color:#7f8c8d;font-weight:700;">⛓️ [회색 ⛓️] 체인 끌어오기</span><br>- 맞으면 강제 이동. 패링 가능!<br><br><span style="color:#2ecc71;font-weight:700;">🟩 [초록색 ❗] 연사 레이저</span><br>- 첫 타격 패링 시 연쇄 자동 반사<br><br><span style="color:#e74c3c;font-weight:700;">🟥 [빨간색 ❌] 폭격 레이저</span><br>- <b>패링 불가! ❌</b> 대시(💨)로 회피!</div><button class="tut-close" onclick="closeTutorial()">확인 완료</button></div><div id="augment-history"></div>`);
+// 오프닝 스크린 및 모달창 HTML 주입 (새 창 안 띄우고 내부 스크롤 보드로 구현)
+container.insertAdjacentHTML('beforeend', `
+    <div id="opening-screen">
+        <div class="title-text">PARRY STRIKE<br><span style="font-size:24px; color:#e74c3c;">Boss Rush</span></div>
+        <div class="subtitle-text">적의 패턴을 파악하고 전부 튕겨내세요!</div>
+        
+        <div class="clash-container">
+            <div class="clash-char clash-player">
+                <div class="ig-eyes"><div class="ig-eye"><div class="ig-pupil"></div></div><div class="ig-eye"><div class="ig-pupil"></div></div></div>
+                <div class="intro-sword"></div>
+            </div>
+            <div class="clash-spark">💥</div>
+            <div class="clash-char clash-boss">
+                <div class="boss-horns"><div class="boss-horn" style="transform:rotate(-20deg);"></div><div class="boss-horn" style="transform:rotate(20deg);"></div></div>
+                <div class="intro-crown"></div>
+                <div class="ig-eyes"><div class="ig-eye"><div class="ig-pupil"></div></div><div class="ig-eye"><div class="ig-pupil"></div></div></div>
+                <div class="intro-boss-weapon"></div>
+            </div>
+        </div>
 
+        <button class="menu-btn" onclick="startGame()">▶ 게임 시작</button>
+        <!-- 리더보드를 새 창이 아니라 내부 모달로 띄웁니다 -->
+        <button class="menu-btn" style="border-color: #9b59b6; color: #9b59b6;" onclick="showLeaderboard()">🏆 랭킹 리더보드 확인</button>
+        <button class="menu-btn menu-btn-tutorial" style="margin-top: 10px;" onclick="showTutorial()">📖 패턴 요약 보기 (필독)</button>
+    </div>
+
+    <!-- 포기 버튼 (게임 도중 우측 상단 표시) -->
+    <button id="btn-giveup" style="position: absolute; top: 15px; right: 15px; z-index: 90; background: #c0392b; color: white; border: 2px solid #fff; padding: 8px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; box-shadow: 0 0 10px black; transition: 0.2s; display: none;">🏳️ 포기</button>
+
+    <!-- 내부 랭킹 리더보드 모달 (구글 시트 iframe) -->
+    <div id="leaderboard-modal" class="modal hidden" style="width: 90%; max-width: 600px; height: 75vh; display: flex; flex-direction: column;">
+        <h2 style="color: #f1c40f; margin-top: 0; flex-shrink: 0;">🏆 랭킹 리더보드</h2>
+        <div style="flex: 1; width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 15px; background: white;">
+            <!-- 새 창 대신 여기에 구글 시트를 띄웁니다 -->
+            <iframe class="leaderboard-iframe" src="https://docs.google.com/spreadsheets/d/190rTIf_nsxscNZ3qhOHnHQgTBXnRvxGke9gcQ7CVyuQ/htmlembed?widget=false&headers=false&chrome=false"></iframe>
+        </div>
+        <button class="tut-close" style="flex-shrink: 0;" onclick="closeLeaderboard()">닫기</button>
+    </div>
+
+    <div id="tutorial-modal" class="modal hidden">
+        <div class="tut-header">📖 생존 가이드 & 패턴 요약</div>
+        <div class="tut-section">
+            1️⃣ <b>우측 상단 증강 UI:</b> 마우스를 올리면 능력을 볼 수 있습니다.<br>
+            2️⃣ <b>죽어도 초기화 안됨:</b> 얻은 능력치는 죽어도 유지됩니다!
+        </div>
+        <div class="tut-section" style="text-align: left;">
+            <div class="tut-title">⚠️ 보스 특수 공격 패턴</div>
+            <span style="color:#f1c40f; font-weight:bold;">🟨 [노란색 ❗] 돌진 공격</span><br>
+            - 패링 성공 시 100의 반동 데미지 + 기절<br><br>
+            <span style="color:#8e44ad; font-weight:bold;">🟪 [보라색 반달] 스턴 검기</span><br>
+            - <b>패링 가능!</b> 방어 실패 시 <b>2초간 기절</b><br><br>
+            <span style="color:#7f8c8d; font-weight:bold;">⛓️ [회색 ⛓️] 체인 끌어오기</span><br>
+            - 맞으면 보스 앞으로 강제 이동. 패링으로 방어!<br><br>
+            <span style="color:#2ecc71; font-weight:bold;">🟩 [초록색 ❗] 연사 레이저</span><br>
+            - 첫 타격 패링 시 연쇄 자동 반사<br><br>
+            <span style="color:#e74c3c; font-weight:bold;">🟥 [빨간색 ❌] 폭격 레이저</span><br>
+            - <b>패링 불가! ❌</b> 무조건 대시(💨)로 회피!
+        </div>
+        <button class="tut-close" onclick="closeTutorial()">확인 완료</button>
+    </div>
+`);
+
+// 사망 모달 내용 덮어쓰기 (안전한 방식 적용)
 const gameOverModal = document.getElementById('game-over-modal');
 if (gameOverModal) {
-    gameOverModal.innerHTML = `<h2 style="color:#e74c3c;font-size:32px;margin-top:0;text-shadow:2px 2px 5px #000;">게임 종료</h2><p id="final-score" style="font-size:18px;margin-bottom:15px;"></p><div style="background:rgba(0,0,0,.6);padding:15px;border-radius:10px;margin-bottom:15px;border:1px solid #f1c40f;"><h3 style="margin-top:0;color:#f1c40f;font-size:16px;">🏆 랭킹 등록</h3><input type="text" id="nickname-input" placeholder="닉네임을 입력하세요" style="width:85%;padding:10px;margin-bottom:10px;border-radius:5px;border:none;font-size:14px;text-align:center;color:#000;"><button class="restart-btn" id="btn-submit-score" style="background:#27ae60;margin-top:0;padding:12px;" onclick="submitScore()">기록 저장하기</button></div><button class="restart-btn" style="background:#8e44ad;padding:12px;margin-bottom:10px;" onclick="window.open('https://docs.google.com/spreadsheets/d/190rTIf_nsxscNZ3qhOHnHQgTBXnRvxGke9gcQ7CVyuQ/edit?usp=sharing','_blank')">📊 리더보드 확인</button><button class="restart-btn" style="padding:12px;" onclick="restartGame()">다시 시작하기</button>`;
+    gameOverModal.innerHTML = `
+        <h2 style="color: #e74c3c; font-size: 32px; margin-top: 0; text-shadow: 2px 2px 5px black;">게임 종료</h2>
+        <p id="final-score" style="font-size: 18px; margin-bottom: 15px;"></p>
+        <div style="background: rgba(0,0,0,0.6); padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #f1c40f;">
+            <h3 style="margin-top: 0; color: #f1c40f; font-size: 16px;">🏆 랭킹 등록</h3>
+            <input type="text" id="nickname-input" placeholder="닉네임을 입력하세요" style="width: 85%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: none; font-size: 14px; text-align: center; color: black;">
+            <button class="restart-btn" id="btn-submit-score" style="background: #27ae60; margin-top: 0; padding: 12px;" onclick="submitScore()">기록 저장하기</button>
+        </div>
+        <!-- 내부 리더보드 창 열기 -->
+        <button class="restart-btn" style="background: #8e44ad; padding: 12px; margin-bottom: 10px;" onclick="showLeaderboard()">📊 리더보드 확인</button>
+        <button class="restart-btn" style="padding: 12px;" onclick="restartGame()">다시 시작하기</button>
+    `;
 }
 
 // 랭킹 전송 로직
@@ -105,9 +275,12 @@ const initPlayer = () => ({
 });
 let player = initPlayer(); let bossLevel = 1; let bosses = []; let projectiles = []; let blasters = [];
 
+// 게임 시작 및 모달 제어
 window.startGame = function() { document.getElementById('opening-screen').style.display = 'none'; document.getElementById('btn-giveup').style.display = 'block'; isPaused = false; spawnBosses(); updateUI(); requestAnimationFrame(update); }
 window.showTutorial = function() { document.getElementById('tutorial-modal').classList.remove('hidden'); }
 window.closeTutorial = function() { document.getElementById('tutorial-modal').classList.add('hidden'); }
+window.showLeaderboard = function() { document.getElementById('leaderboard-modal').classList.remove('hidden'); }
+window.closeLeaderboard = function() { document.getElementById('leaderboard-modal').classList.add('hidden'); }
 
 function getDistance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
 function getClosestBossTo(targetX, targetY) {
@@ -123,7 +296,6 @@ function spawnParticles(x, y, color, count) {
     for (let i = 0; i < count; i++) { let p = document.createElement('div'); p.className = 'particle'; p.style.backgroundColor = color; p.style.width = (Math.random() * 6 + 4) + 'px'; p.style.height = p.style.width; p.style.left = x + 'px'; p.style.top = y + 'px'; let angle = Math.random() * Math.PI * 2; let dist = Math.random() * 60 + 20; p.style.setProperty('--tx', Math.cos(angle) * dist + 'px'); p.style.setProperty('--ty', Math.sin(angle) * dist + 'px'); container.appendChild(p); setTimeout(() => p.remove(), 400); }
 }
 function spawnFireTrail(x, y) { let t = document.createElement('div'); t.className = 'fire-trail'; t.style.left = x + 'px'; t.style.top = y + 'px'; container.appendChild(t); setTimeout(() => t.remove(), 300); }
-function createScreenFlash() { let flash = document.createElement('div'); flash.className = 'screen-flash'; container.appendChild(flash); setTimeout(() => flash.remove(), 300); }
 function createDashShadow() { let shadow = document.createElement('div'); shadow.className = 'dash-shadow'; shadow.style.left = player.x + 'px'; shadow.style.top = player.y + 'px'; container.appendChild(shadow); setTimeout(() => shadow.remove(), 300); }
 
 function spawnBosses() {
@@ -196,7 +368,7 @@ function activateParry() {
 function doSkill() {
     if (player.hasSkill && player.skillCooldown <= 0 && !isPaused && !player.isStunned && !player.isPulled && !player.isDashing) {
         playSound('swing'); player.skillCooldown = player.maxSkillCooldown; playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
-        createScreenFlash(); spawnParticles(player.x, player.y, '#f1c40f', 30); for (let i = 0; i < 8; i++) spawnProjectile(player.x, player.y, (Math.PI / 4) * i, 15, player.damage * player.skillDamageMult, false, 120, true);
+        spawnParticles(player.x, player.y, '#f1c40f', 30); for (let i = 0; i < 8; i++) spawnProjectile(player.x, player.y, (Math.PI / 4) * i, 15, player.damage * player.skillDamageMult, false, 120, true);
     }
 }
 
@@ -233,7 +405,6 @@ function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = fal
         cross.style.top = '50%'; cross.style.left = '50%'; cross.style.transform = `translate(-50%, -50%) rotate(${-angle}rad)`; 
         cross.style.fontSize = (size * 0.4) + 'px'; cross.style.textShadow = '0 0 5px black'; el.appendChild(cross);
     }
-    
     container.appendChild(el);
     projectiles.push({ x, y, angle, speed, damage, isBoss, radius: (!isBoss && (player.weaponType === 'ice' || player.weaponType === 'dark') ? size/2 * 1.5 : size/2), el, isGrab, owner, isUnparryable, timer: 0 });
 }
@@ -267,7 +438,7 @@ function bossLogic() {
                     if (getDistance(boss.x, boss.y, player.x, player.y) < player.radius + boss.radius) {
                         if (player.isDashing) { } 
                         else if (player.isParrying || player.autoParryTimer > 0) { 
-                            createScreenFlash(); spawnParticles(player.x, player.y, '#0ff', 40); player.autoParryTimer = 6; playSound('parryed'); player.isParrying = false; playerEl.classList.remove('parrying', 'parry-cd'); playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
+                            spawnParticles(player.x, player.y, '#0ff', 40); player.autoParryTimer = 6; playSound('parryed'); player.isParrying = false; playerEl.classList.remove('parrying', 'parry-cd'); playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
                             if (player.parryHeal) { player.hp = Math.min(player.maxHp, player.hp + 20); spawnDamageText(player.x, player.y, 20, 'heal'); }
                             player.parryCooldown = 0; parryStatusEl.innerText = "돌진 저지 성공! (기절)"; parryStatusEl.style.color = "#2ecc71";
                             boss.hp -= 100; gainExp(50); boss.stateTimer = 90; bossHitEffect(boss, boss.x, boss.y, 100, true); checkBossDeath(boss);
@@ -317,8 +488,7 @@ function update() {
     if (player.dashCooldown <= 0) { dashStatusEl.innerText = "[Shift] 대시 준비 완료"; dashStatusEl.style.color = "#2ecc71"; } else { dashStatusEl.innerText = `대시 쿨타임: ${(player.dashCooldown/60).toFixed(1)}초`; dashStatusEl.style.color = "#7f8c8d"; }
 
     if (player.isStunned) {
-        player.stunTimer--;
-        parryStatusEl.innerText = `기절됨! (${Math.ceil(player.stunTimer/60)}초)`; parryStatusEl.style.color = "red";
+        player.stunTimer--; parryStatusEl.innerText = `기절됨! (${Math.ceil(player.stunTimer/60)}초)`; parryStatusEl.style.color = "red";
         let stunInd = document.getElementById('stun-indicator');
         if (!stunInd) { stunInd = document.createElement('div'); stunInd.id = 'stun-indicator'; stunInd.className = 'stun-indicator'; stunInd.innerText = '기절!'; playerEl.appendChild(stunInd); playerEl.classList.add('player-stunned'); }
         if (player.stunTimer <= 0) { player.isStunned = false; if (stunInd) stunInd.remove(); playerEl.classList.remove('player-stunned'); }
@@ -400,8 +570,9 @@ function update() {
                         p.angle = target ? Math.atan2(target.y - p.y, target.x - p.x) : p.angle + Math.PI; p.speed *= 1.5; p.damage *= 2;
                     }
                 } else {
+                    let isChain = p.el.classList.contains('slash-chain');
                     if (p.isGrab) { player.isStunned = true; player.stunTimer = 120; takeDamage(20); let stunFx = document.createElement('div'); stunFx.className = 'stun-flash'; container.appendChild(stunFx); setTimeout(() => stunFx.remove(), 300); p.el.remove(); projectiles.splice(i, 1); } 
-                    else if (p.el.classList.contains('slash-chain')) { player.isPulled = true; player.pullTimer = 40; player.pullTarget = p.owner; takeDamage(5); p.el.remove(); projectiles.splice(i, 1); } 
+                    else if (isChain) { player.isPulled = true; player.pullTimer = 40; player.pullTarget = p.owner; takeDamage(5); p.el.remove(); projectiles.splice(i, 1); } 
                     else { takeDamage(p.damage); p.el.remove(); projectiles.splice(i, 1); }
                 }
             }
@@ -420,8 +591,7 @@ function update() {
 
     if (player.hp <= 0) {
         playSound('dead'); document.getElementById('final-score').innerText = `현재 도달: Boss Wave ${bossLevel} / 플레이어 Lv. ${player.level}`;
-        document.getElementById('game-over-modal').classList.remove('hidden'); isPaused = true; 
-        document.getElementById('btn-giveup').style.display = 'none'; return;
+        document.getElementById('game-over-modal').classList.remove('hidden'); isPaused = true; document.getElementById('btn-giveup').style.display = 'none'; return;
     }
     requestAnimationFrame(update);
 }
@@ -439,6 +609,7 @@ window.restartGame = function() {
     container.classList.remove('screen-shake', 'boss-hit-shake');
     let stunInd = document.getElementById('stun-indicator'); if(stunInd) stunInd.remove();
 
+    document.getElementById('btn-giveup').style.display = 'block';
     spawnBosses(); updateUI(); renderAugments(); isPaused = false; requestAnimationFrame(update);
 }
 
