@@ -19,7 +19,7 @@ let playerSwordEl = document.getElementById('player-sword');
 if (!playerSwordEl && playerEl) {
     playerSwordEl = document.createElement('div');
     playerSwordEl.id = 'player-sword';
-    playerSwordEl.className = 'sword'; // CSS 클래스 추가
+    playerSwordEl.className = 'sword';
     playerEl.appendChild(playerSwordEl);
 }
 
@@ -36,48 +36,210 @@ window.addEventListener('resize', () => { GAME_WIDTH = container.clientWidth; GA
 let isPaused = true;
 let isMobileEnv = false; 
 
-// ==========================================
-// 버튼 이벤트 연결 (HTML onclick 버그 해결)
-// ==========================================
+// =========================================================
+// 동적 스타일 및 스크립트 주입 (포기 버튼 우측 하단 이동 포함)
+// =========================================================
+const style = document.createElement('style');
+style.innerHTML = `
+    @media (min-width: 769px) { #mobile-controls { display: none !important; } }
+    #mobile-controls { position: absolute; bottom: 30px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 30px; box-sizing: border-box; z-index: 100; pointer-events: none; touch-action: none; }
+    #joystick-area { width: 130px; height: 130px; border-radius: 50%; background: rgba(0,0,0,0.4); position: relative; pointer-events: auto; }
+    #joystick-knob { width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.8); position: absolute; top: 40px; left: 40px; }
+    #action-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; pointer-events: auto; }
+    .mob-btn { width: 60px; height: 60px; border-radius: 50%; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.5); color: white; font-size: 24px; display: flex; justify-content: center; align-items: center; user-select: none; }
+    .mob-btn:active { background: rgba(255,255,255,0.5); }
+    .mob-btn.hidden { display: none !important; }
+
+    #player { background: #3498db; border: 2px solid #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; z-index: 20; position: relative; transition: filter 0.2s; }
+    #player-sword { position: absolute; width: 45px; height: 10px; background: #bdc3c7; left: 25px; top: 20px; border-radius: 5px; transform-origin: left center; transition: all 0.3s; z-index: -1; }
+    .attack-anim #player-sword { animation: playerSwing 0.2s ease-out; }
+    @keyframes playerSwing { 0% { transform: rotate(0deg); } 50% { transform: rotate(140deg); } 100% { transform: rotate(0deg); } }
+
+    .ig-eyes { position: absolute; top: 12px; width: 100%; display: flex; justify-content: center; gap: 6px; z-index: 5; pointer-events: none; }
+    .ig-eye { width: 12px; height: 12px; background: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; box-shadow: 0 0 3px rgba(0,0,0,0.5); }
+    .ig-pupil { width: 6px; height: 6px; background: black; border-radius: 50%; transition: 0.2s; }
+    .eye-glow .ig-pupil { background: red; box-shadow: 0 0 10px red; transform: scale(1.2); }
+
+    .ig-boss-weapon { position: absolute; top: 20px; left: -30px; width: 50px; height: 12px; background: #7f8c8d; border-radius: 4px; transform-origin: right center; animation: igBossWeaponIdle 2s infinite alternate; z-index: -1; }
+    .boss-attack-anim .ig-boss-weapon { animation: igBossSwing 0.2s ease-out; }
+    @keyframes igBossWeaponIdle { 0% { transform: rotate(-10deg); } 100% { transform: rotate(10deg); } }
+    @keyframes igBossSwing { 0% { transform: rotate(0deg); } 50% { transform: rotate(-130deg); } 100% { transform: rotate(0deg); } }
+
+    .boss-helmet { position: absolute; top: -10px; left: 5px; width: 40px; height: 20px; background: #7f8c8d; border-radius: 15px 15px 0 0; border: 2px solid #2c3e50; z-index: 6; }
+    .boss-crown { position: absolute; top: -15px; left: 5px; width: 40px; height: 20px; background: linear-gradient(#f1c40f, #e67e22); clip-path: polygon(0 0, 20% 100%, 50% 0, 80% 100%, 100% 0, 100% 100%, 0 100%); z-index: 6; }
+
+    .player-stunned { background: #9b59b6 !important; box-shadow: 0 0 20px #8e44ad, inset 0 0 15px #000 !important; animation: stunShake 0.1s infinite; filter: grayscale(0.3); }
+    @keyframes stunShake { 0% { transform: translate(2px, 1px) rotate(0deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
+    .stun-indicator { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); color: #f1c40f; font-weight: bold; font-size: 18px; text-shadow: 0 0 10px red; white-space: nowrap; animation: blink 0.3s infinite; z-index: 50; }
+    @keyframes blink { 0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); } 50% { opacity: 0.5; transform: translateX(-50%) scale(1.1); } }
+    
+    /* 대시 잔상을 투명하고 부드러운 유령 효과로 변경 */
+    .dash-shadow { position: absolute; width: 50px; height: 50px; background-color: rgba(52, 152, 219, 0.2); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 5; animation: shadowFade 0.3s ease-out forwards; }
+    @keyframes shadowFade { 0% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); } }
+
+    /* 화면 전체를 하얗게 만드는 눈뽕 플래시(screen-flash) CSS를 완벽히 제거했습니다. */
+
+    #opening-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20, 25, 30, 0.95); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
+    .title-text { font-size: 48px; font-weight: bold; text-shadow: 0 0 20px #3498db; margin-bottom: 10px; text-align: center; line-height: 1.2; }
+    .subtitle-text { font-size: 18px; color: #aaa; margin-bottom: 30px; }
+    
+    .clash-container { position: relative; width: 300px; height: 120px; margin-bottom: 30px; display: flex; align-items: center; }
+    .clash-char { width: 50px; height: 50px; border-radius: 50%; position: absolute; border: 2px solid white; box-shadow: 0 0 15px rgba(255,255,255,0.5); display: flex; align-items: center; }
+    .clash-player { background: #3498db; left: 0; animation: clashLeft 2.5s infinite; justify-content: flex-end; }
+    .intro-sword { position: absolute; right: -30px; top: 20px; width: 40px; height: 8px; background: #bdc3c7; border-radius: 4px; transform-origin: left center; animation: introSwingPlayer 2.5s infinite; }
+    .clash-boss { background: #8e44ad; right: 0; border: 4px solid #f1c40f; animation: clashRight 2.5s infinite; justify-content: flex-start; }
+    .intro-boss-weapon { position: absolute; left: -40px; top: 20px; width: 50px; height: 12px; background: #2c3e50; border-radius: 4px; transform-origin: right center; animation: introSwingBoss 2.5s infinite; }
+    .clash-spark { position: absolute; left: 135px; width: 30px; height: 30px; font-size: 40px; line-height: 30px; text-align: center; opacity: 0; animation: sparkAnim 2.5s infinite; z-index: 10; }
+    
+    @keyframes clashLeft { 0% { left: 0; } 15% { left: 100px; } 25% { left: 80px; } 35% { left: 100px; } 45% { left: 80px; } 55% { left: 100px; } 70% { left: 0; } 100% { left: 0; } }
+    @keyframes clashRight { 0% { right: 0; } 15% { right: 100px; } 25% { right: 80px; } 35% { right: 100px; } 45% { right: 80px; } 55% { right: 100px; } 70% { right: 0; } 100% { right: 0; } }
+    @keyframes introSwingPlayer { 0%, 10%, 25%, 45%, 70%, 100% { transform: rotate(-40deg); } 15%, 35%, 55% { transform: rotate(45deg); } }
+    @keyframes introSwingBoss { 0%, 10%, 25%, 45%, 70%, 100% { transform: rotate(40deg); } 15%, 35%, 55% { transform: rotate(-45deg); } }
+    @keyframes sparkAnim { 0%, 14% { opacity: 0; transform: scale(0.5); } 15% { opacity: 1; transform: scale(1.5); } 20% { opacity: 0; } 34% { opacity: 0; } 35% { opacity: 1; transform: scale(1.5); } 40% { opacity: 0; } 54% { opacity: 0; } 55% { opacity: 1; transform: scale(2); color: yellow; text-shadow: 0 0 20px red; } 65% { opacity: 0; } 100% { opacity: 0; } }
+
+    .menu-btn { padding: 15px 40px; font-size: 20px; font-weight: bold; background: transparent; color: white; border: 2px solid #3498db; border-radius: 10px; cursor: pointer; transition: 0.2s; margin-top: 10px; width: 280px; }
+    .menu-btn:hover { background: #3498db; box-shadow: 0 0 20px #3498db; transform: scale(1.05); }
+    .menu-btn-tutorial { border-color: #f1c40f; color: #f1c40f; font-size: 18px; padding: 10px 30px; margin-top: 20px; }
+    .menu-btn-tutorial:hover { background: #f1c40f; color: black; box-shadow: 0 0 20px #f1c40f; }
+
+    .leaderboard-iframe { width: 100%; height: 100%; border: none; border-radius: 10px; background: white; }
+
+    #tutorial-modal, #leaderboard-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 500px; background: rgba(10, 15, 20, 0.98); border: 2px solid #f1c40f; border-radius: 15px; padding: 25px; color: white; z-index: 400; display: none; box-shadow: 0 0 30px #f1c40f; overflow-y: auto; max-height: 80%; }
+    .tut-header { font-size: 22px; color: #f1c40f; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px; text-align: center; font-weight: bold; }
+    .tut-section { margin-bottom: 15px; line-height: 1.6; font-size: 15px; }
+    .tut-title { font-weight: bold; color: #3498db; margin-bottom: 8px; font-size: 18px; }
+    .tut-close { display: block; margin: 20px auto 0; padding: 10px 30px; background: #3498db; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-align: center; width: 100%; }
+
+    #augment-history { position: absolute; top: 10px; right: 10px; display: flex; gap: 12px; z-index: 50; flex-wrap: wrap-reverse; justify-content: flex-end; max-width: 300px; }
+    .history-icon { position: relative; width: 40px; height: 40px; background: rgba(0,0,0,0.8); border: 1px solid #aaa; border-radius: 5px; display: flex; justify-content: center; align-items: center; font-size: 20px; box-shadow: 0 0 5px black; cursor: pointer; transition: 0.2s; pointer-events: auto; }
+    .history-icon:hover { border-color: #f1c40f; box-shadow: 0 0 10px #f1c40f; z-index: 60; }
+    
+    .custom-tooltip { visibility: hidden; background-color: rgba(10, 15, 20, 0.95); color: #fff; text-align: right; border: 2px solid #f1c40f; border-radius: 8px; padding: 12px; position: absolute; z-index: 1000; top: 120%; right: 0; white-space: nowrap; font-size: 14px; font-weight: normal; opacity: 0; transition: opacity 0.1s; pointer-events: none; box-shadow: 0 0 15px #f1c40f; line-height: 1.5; }
+    .history-icon:hover .custom-tooltip { visibility: visible; opacity: 1; }
+    .stack-badge { position: absolute; bottom: -6px; right: -6px; background: #e74c3c; color: white; font-size: 12px; font-weight: bold; border-radius: 50%; width: 20px; height: 20px; display: flex; justify-content: center; align-items: center; border: 2px solid #fff; box-shadow: 0 0 5px black; z-index: 55; }
+
+    .slash { position: absolute; pointer-events: none; z-index: 15; display: flex; justify-content: center; align-items: center; clip-path: polygon(0% 0%, 100% 50%, 0% 100%, 30% 50%); }
+    .slash-elemental { background: transparent !important; clip-path: none !important; filter: drop-shadow(0 0 10px currentColor); }
+    .slash-purple { background: #8e44ad !important; filter: drop-shadow(0 0 10px #8e44ad) !important; }
+    .slash-green { background: #2ecc71 !important; clip-path: none !important; border-radius: 10px !important; filter: drop-shadow(0 0 8px #2ecc71) !important; }
+    .slash-chain { background: #95a5a6 !important; width: 50px !important; height: 6px !important; clip-path: none !important; border-radius: 0 !important; filter: drop-shadow(0 0 5px #7f8c8d) !important; }
+    .slash-lightning { filter: drop-shadow(0 0 10px #00ffff) !important; }
+    .slash-dark { filter: drop-shadow(0 0 15px #8e44ad) !important; }
+    .unparryable-attack { background: #e74c3c !important; filter: drop-shadow(0 0 15px #e74c3c) !important; clip-path: none !important; border-radius: 50%; }
+
+    /* 포기(Give Up) 버튼: 우측 하단으로 이동. 모바일에서는 조작버튼과 겹치지 않게 약간 위로 조정 */
+    #btn-giveup { position: absolute; bottom: 20px; right: 20px; z-index: 900; background: #c0392b; color: white; border: 2px solid #fff; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; box-shadow: 0 0 15px rgba(0,0,0,0.8); transition: transform 0.2s; display: none; }
+    #btn-giveup:hover { transform: scale(1.1); }
+    @media (max-width: 768px) { #btn-giveup { bottom: 130px !important; right: 15px !important; opacity: 0.8; } }
+`;
+document.head.appendChild(style);
+
+container.insertAdjacentHTML('beforeend', `
+    <div id="opening-screen">
+        <div class="title-text">PARRY STRIKE<br><span style="font-size:24px; color:#e74c3c;">Boss Rush</span></div>
+        <div class="subtitle-text">적의 패턴을 파악하고 전부 튕겨내세요!</div>
+        
+        <div class="clash-container">
+            <div class="clash-char clash-player">
+                <div class="ig-eyes"><div class="ig-eye"><div class="ig-pupil"></div></div><div class="ig-eye"><div class="ig-pupil"></div></div></div>
+                <div class="intro-sword"></div>
+            </div>
+            <div class="clash-spark">💥</div>
+            <div class="clash-char clash-boss">
+                <div class="boss-horns"><div class="boss-horn" style="transform:rotate(-20deg);"></div><div class="boss-horn" style="transform:rotate(20deg);"></div></div>
+                <div class="intro-crown"></div>
+                <div class="ig-eyes"><div class="ig-eye"><div class="ig-pupil"></div></div><div class="ig-eye"><div class="ig-pupil"></div></div></div>
+                <div class="intro-boss-weapon"></div>
+            </div>
+        </div>
+
+        <button id="btn-start-game" class="menu-btn">▶ 게임 시작</button>
+        <button id="btn-show-lb-main" class="menu-btn" style="border-color: #9b59b6; color: #9b59b6;">🏆 랭킹 리더보드 확인</button>
+        <button id="btn-show-tut-main" class="menu-btn menu-btn-tutorial" style="margin-top: 10px;">📖 패턴 요약 보기 (필독)</button>
+    </div>
+
+    <!-- 포기 버튼 우측 하단 -->
+    <button id="btn-giveup">🏳️ 포기</button>
+
+    <div id="leaderboard-modal" class="modal hidden" style="width: 90%; max-width: 600px; height: 75vh; display: flex; flex-direction: column;">
+        <h2 style="color: #f1c40f; margin-top: 0; flex-shrink: 0;">🏆 랭킹 리더보드</h2>
+        <div style="flex: 1; width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 15px; background: white;">
+            <iframe class="leaderboard-iframe" src="https://docs.google.com/spreadsheets/d/190rTIf_nsxscNZ3qhOHnHQgTBXnRvxGke9gcQ7CVyuQ/htmlembed?widget=false&headers=false&chrome=false"></iframe>
+        </div>
+        <button id="btn-close-lb" class="tut-close" style="flex-shrink: 0;">닫기</button>
+    </div>
+
+    <div id="tutorial-modal" class="modal hidden">
+        <div class="tut-header">📖 생존 가이드 & 패턴 요약</div>
+        <div class="tut-section">
+            1️⃣ <b>우측 상단 증강 UI:</b> 마우스를 올리면 능력을 볼 수 있습니다.<br>
+            2️⃣ <b>죽어도 초기화 안됨:</b> 얻은 능력치는 죽어도 유지됩니다!
+        </div>
+        <div class="tut-section" style="text-align: left;">
+            <div class="tut-title">⚠️ 보스 특수 공격 패턴</div>
+            <span style="color:#f1c40f; font-weight:bold;">🟨 [노란색 ❗] 돌진 공격</span><br>
+            - 패링 성공 시 100의 반동 데미지 + 기절<br><br>
+            <span style="color:#8e44ad; font-weight:bold;">🟪 [보라색 반달] 스턴 검기</span><br>
+            - <b>패링 가능!</b> 방어 실패 시 <b>2초간 기절</b><br><br>
+            <span style="color:#7f8c8d; font-weight:bold;">⛓️ [회색 ⛓️] 체인 끌어오기</span><br>
+            - 맞으면 보스 앞으로 강제 이동. 패링으로 방어!<br><br>
+            <span style="color:#2ecc71; font-weight:bold;">🟩 [초록색 ❗] 연사 레이저</span><br>
+            - 첫 타격 패링 시 연쇄 자동 반사<br><br>
+            <span style="color:#e74c3c; font-weight:bold;">🟥 [빨간색 ❌] 폭격 레이저</span><br>
+            - <b>패링 불가! ❌</b> 무조건 대시(💨)로 회피!
+        </div>
+        <button id="btn-close-tut" class="tut-close">확인 완료</button>
+    </div>
+`);
+
+const gameOverModal = document.getElementById('game-over-modal');
+if (gameOverModal) {
+    gameOverModal.innerHTML = `
+        <h2 style="color: #e74c3c; font-size: 32px; margin-top: 0; text-shadow: 2px 2px 5px black;">게임 종료</h2>
+        <p id="final-score" style="font-size: 18px; margin-bottom: 15px;"></p>
+        <div style="background: rgba(0,0,0,0.6); padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #f1c40f;">
+            <h3 style="margin-top: 0; color: #f1c40f; font-size: 16px;">🏆 랭킹 등록</h3>
+            <input type="text" id="nickname-input" placeholder="닉네임을 입력하세요" style="width: 85%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: none; font-size: 14px; text-align: center; color: black;">
+            <button class="restart-btn" id="btn-submit-score" style="background: #27ae60; margin-top: 0; padding: 12px;">기록 저장하기</button>
+        </div>
+        <button class="restart-btn" id="btn-show-lb-go" style="background: #8e44ad; padding: 12px; margin-bottom: 10px;">📊 리더보드 확인</button>
+        <button class="restart-btn" id="btn-restart-game" style="padding: 12px;">다시 시작하기</button>
+    `;
+}
+
+// 이벤트 바인딩
 function bindEvents() {
-    const btnStart = document.querySelector('button[onclick="startGame()"]');
-    if (btnStart) {
-        btnStart.removeAttribute('onclick');
-        btnStart.addEventListener('click', startGame);
-    }
-
-    const btnTutMain = document.querySelector('button[onclick="showTutorial()"]');
-    if (btnTutMain) {
-        btnTutMain.removeAttribute('onclick');
-        btnTutMain.addEventListener('click', showTutorial);
-    }
-
-    const btnCloseTut = document.querySelector('button[onclick="closeTutorial()"]');
-    if (btnCloseTut) {
-        btnCloseTut.removeAttribute('onclick');
-        btnCloseTut.addEventListener('click', closeTutorial);
-    }
-
-    const btnRestart = document.querySelector('button[onclick="restartGame()"]');
-    if (btnRestart) {
-        btnRestart.removeAttribute('onclick');
-        btnRestart.addEventListener('click', restartGame);
+    if(document.getElementById('btn-start-game')) document.getElementById('btn-start-game').addEventListener('click', startGame);
+    if(document.getElementById('btn-show-tut-main')) document.getElementById('btn-show-tut-main').addEventListener('click', showTutorial);
+    if(document.getElementById('btn-show-lb-main')) document.getElementById('btn-show-lb-main').addEventListener('click', showLeaderboard);
+    if(document.getElementById('btn-close-tut')) document.getElementById('btn-close-tut').addEventListener('click', closeTutorial);
+    if(document.getElementById('btn-close-lb')) document.getElementById('btn-close-lb').addEventListener('click', closeLeaderboard);
+    if(document.getElementById('btn-submit-score')) document.getElementById('btn-submit-score').addEventListener('click', submitScore);
+    if(document.getElementById('btn-show-lb-go')) document.getElementById('btn-show-lb-go').addEventListener('click', showLeaderboard);
+    if(document.getElementById('btn-restart-game')) document.getElementById('btn-restart-game').addEventListener('click', restartGame);
+    
+    const btnGiveUp = document.getElementById('btn-giveup');
+    if(btnGiveUp) {
+        btnGiveUp.addEventListener('click', () => {
+            if (isPaused) return;
+            if (confirm("게임을 포기하시겠습니까?\n(현재 도달한 레벨로 리더보드에 랭킹을 등록할 수 있습니다.)")) player.hp = 0; 
+        });
     }
 }
-// 페이지 로드 시 이벤트 바인딩 실행
 bindEvents();
 
-// 리더보드 모달 제어 함수
-window.showLeaderboard = function() {
-    const modal = document.getElementById('leaderboard-modal');
-    if(modal) modal.classList.remove('hidden');
+function startGame() { 
+    document.getElementById('opening-screen').style.display = 'none'; 
+    const btnGiveUp = document.getElementById('btn-giveup');
+    if(btnGiveUp) btnGiveUp.style.display = 'block'; 
+    isPaused = false; 
+    spawnBosses(); updateUI(); requestAnimationFrame(update); 
 }
-window.closeLeaderboard = function() {
-    const modal = document.getElementById('leaderboard-modal');
-    if(modal) modal.classList.add('hidden');
-}
+function showTutorial() { document.getElementById('tutorial-modal').classList.remove('hidden'); }
+function closeTutorial() { document.getElementById('tutorial-modal').classList.add('hidden'); }
+function showLeaderboard() { document.getElementById('leaderboard-modal').classList.remove('hidden'); }
+function closeLeaderboard() { document.getElementById('leaderboard-modal').classList.add('hidden'); }
 
-// 랭킹 전송 로직
 window.submitScore = function() {
     const nicknameInput = document.getElementById('nickname-input');
     if(!nicknameInput) return;
@@ -101,14 +263,10 @@ window.submitScore = function() {
         .catch(e => { submitBtn.innerHTML = '❌ 전송 실패 (재시도)'; submitBtn.disabled = false; });
 }
 
-// 포기 버튼 로직
-const btnGiveUp = document.getElementById('btn-giveup');
-if(btnGiveUp) {
-    btnGiveUp.addEventListener('click', () => {
-        if (isPaused) return;
-        if (confirm("게임을 포기하시겠습니까?\n(현재 도달한 레벨로 리더보드에 랭킹을 등록할 수 있습니다.)")) player.hp = 0; 
-    });
-}
+const originalBossEl = document.getElementById('boss');
+const originalBossUiEl = document.getElementById('boss-ui');
+if(originalBossEl) originalBossEl.style.display = 'none';
+if(originalBossUiEl) originalBossUiEl.style.display = 'none';
 
 const keys = { w: false, a: false, s: false, d: false }; let mousePos = { x: GAME_WIDTH / 2, y: GAME_HEIGHT / 2 };
 window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true; if (e.code === 'Space') { e.preventDefault(); activateParry(); } if (e.key.toLowerCase() === 'r') { doSkill(); } if (e.key === 'Shift') { e.preventDefault(); doDash(); }});
@@ -139,9 +297,6 @@ const mobParry = document.getElementById('mob-parry'); if(mobParry) mobParry.add
 const mobDash = document.getElementById('mob-dash'); if(mobDash) mobDash.addEventListener('touchstart', (e) => { e.preventDefault(); doDash(); }, {passive: false});
 const mobSkill = document.getElementById('mob-skill'); if(mobSkill) mobSkill.addEventListener('touchstart', (e) => { e.preventDefault(); doSkill(); }, {passive: false});
 
-// ==========================================
-// 캐릭터 스탯 및 스피드 밸런싱(너프) 적용
-// ==========================================
 const initPlayer = () => ({
     x: GAME_WIDTH / 2, y: GAME_HEIGHT - 100, speed: 2.2, radius: 25, hp: 100, maxHp: 100, exp: 0, maxExp: 200, level: 1, damage: 10,
     attackCount: 1, baseAttackCooldown: 30, attackCooldown: 0, attackQueue: 0, burstTimer: 0,
@@ -151,17 +306,6 @@ const initPlayer = () => ({
     lifesteal: 0, skillDamageMult: 2, weaponType: 'normal', dashDamage: false, parryHeal: false, waveChance: false, augments: []
 });
 let player = initPlayer(); let bossLevel = 1; let bosses = []; let projectiles = []; let blasters = [];
-
-function startGame() { 
-    document.getElementById('opening-screen').style.display = 'none'; 
-    if(btnGiveUp) btnGiveUp.style.display = 'block'; 
-    isPaused = false; 
-    spawnBosses(); 
-    updateUI(); 
-    requestAnimationFrame(update); 
-}
-function showTutorial() { document.getElementById('tutorial-modal').classList.remove('hidden'); }
-function closeTutorial() { document.getElementById('tutorial-modal').classList.add('hidden'); }
 
 function getDistance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
 function getClosestBossTo(targetX, targetY) {
@@ -177,6 +321,43 @@ function spawnParticles(x, y, color, count) {
     for (let i = 0; i < count; i++) { let p = document.createElement('div'); p.className = 'particle'; p.style.backgroundColor = color; p.style.width = (Math.random() * 6 + 4) + 'px'; p.style.height = p.style.width; p.style.left = x + 'px'; p.style.top = y + 'px'; let angle = Math.random() * Math.PI * 2; let dist = Math.random() * 60 + 20; p.style.setProperty('--tx', Math.cos(angle) * dist + 'px'); p.style.setProperty('--ty', Math.sin(angle) * dist + 'px'); container.appendChild(p); setTimeout(() => p.remove(), 400); }
 }
 function spawnFireTrail(x, y) { let t = document.createElement('div'); t.className = 'fire-trail'; t.style.left = x + 'px'; t.style.top = y + 'px'; container.appendChild(t); setTimeout(() => t.remove(), 300); }
+
+// =====================================
+// 흰색 플래시 대신 화려한 패링 불꽃 이펙트 추가
+// =====================================
+function createParryEffect(x, y) {
+    // 하늘색 파동
+    let ring = document.createElement('div');
+    ring.style.position = 'absolute'; ring.style.width = '50px'; ring.style.height = '50px';
+    ring.style.border = '4px solid #00ffff'; ring.style.borderRadius = '50%';
+    ring.style.left = x + 'px'; ring.style.top = y + 'px';
+    ring.style.transform = 'translate(-50%, -50%)'; ring.style.pointerEvents = 'none';
+    ring.style.zIndex = '50';
+    ring.animate([
+        { transform: 'translate(-50%, -50%) scale(0.5)', opacity: 1, borderWidth: '4px' },
+        { transform: 'translate(-50%, -50%) scale(2.5)', opacity: 0, borderWidth: '0px' }
+    ], { duration: 400, easing: 'ease-out' });
+    container.appendChild(ring);
+    setTimeout(() => ring.remove(), 400);
+
+    // 사방으로 튀는 불꽃 파티클
+    for (let i = 0; i < 6; i++) {
+        let spark = document.createElement('div');
+        spark.style.position = 'absolute'; spark.style.width = '4px'; spark.style.height = '15px';
+        spark.style.background = '#00ffff'; spark.style.borderRadius = '2px';
+        spark.style.left = x + 'px'; spark.style.top = y + 'px';
+        spark.style.zIndex = '100'; spark.style.pointerEvents = 'none';
+        spark.style.boxShadow = '0 0 10px #00ffff';
+        let angle = (Math.PI * 2 / 6) * i;
+        spark.animate([
+            { transform: `translate(-50%, -50%) rotate(${angle}rad) translateY(0) scale(1)`, opacity: 1 },
+            { transform: `translate(-50%, -50%) rotate(${angle}rad) translateY(-50px) scale(0)`, opacity: 0 }
+        ], { duration: 300, easing: 'ease-out' });
+        container.appendChild(spark);
+        setTimeout(() => spark.remove(), 300);
+    }
+}
+
 function createDashShadow() { let shadow = document.createElement('div'); shadow.className = 'dash-shadow'; shadow.style.left = player.x + 'px'; shadow.style.top = player.y + 'px'; container.appendChild(shadow); setTimeout(() => shadow.remove(), 300); }
 
 function spawnBosses() {
@@ -199,16 +380,9 @@ function spawnBosses() {
         hpBg.appendChild(hpFill); uiEl.appendChild(nameEl); uiEl.appendChild(hpBg); container.appendChild(el); container.appendChild(uiEl);
 
         let maxHp = 50 + (bossLevel * 100); let spacing = GAME_WIDTH / (bossLevel + 1);
-        // 이동속도 하향 (vx: 2 -> 1.2) / 돌진속도 하향 (dashSpeed: 20+bossLevel -> 12+bossLevel*0.5)
         bosses.push({ x: spacing * (i + 1), y: 100 + (Math.random() * 80), radius: 50, hp: maxHp, maxHp: maxHp, state: 'idle', stateTimer: Math.floor(Math.random() * 40), vx: 1.2 * (i % 2 === 0 ? 1 : -1), vy: 0, dashSpeed: 12 + (bossLevel * 0.5), dashHitDelay: 0, freezeStack: 0, isFrozen: false, freezeTimer: 0, el: el, uiEl: uiEl, hpFill: hpFill });
     }
     const topBossName = document.getElementById('boss-name'); if(topBossName) topBossName.innerText = `WAVE ${bossLevel} (적 ${bossLevel}마리)`;
-}
-
-function createBlaster(x, y, angle, owner) {
-    playSound('parry'); const el = document.createElement('div'); el.className = 'gaster-blaster'; el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
-    const eye = document.createElement('div'); eye.innerText = '❌'; eye.style.position = 'absolute'; eye.style.right = '-10px'; eye.style.top = '-15px'; eye.style.fontSize = '20px'; eye.style.textShadow = '0 0 10px #f00'; el.appendChild(eye);
-    const telegraph = document.createElement('div'); telegraph.className = 'blaster-telegraph'; el.appendChild(telegraph); container.appendChild(el); blasters.push({ x, y, angle, timer: 35, el, telegraph, owner });
 }
 
 function takeDamage(amount) {
@@ -236,7 +410,6 @@ function doAttack() {
     let tx = target ? target.x : player.x; let ty = target ? target.y : player.y - 10; const baseAngle = Math.atan2(ty - player.y, tx - player.x);
     if(playerSwordEl) { playerSwordEl.style.transform = `rotate(${baseAngle}rad)`; setTimeout(() => { playerSwordEl.style.transform = 'rotate(0deg)'; }, 200); }
 
-    // 플레이어 기본 투사체 속도 12 -> 8 (너프)
     if (player.waveChance && Math.random() < 0.3) { spawnProjectile(player.x, player.y, baseAngle - 0.3, 8, player.damage, false, 70); spawnProjectile(player.x, player.y, baseAngle, 8, player.damage, false, 70); spawnProjectile(player.x, player.y, baseAngle + 0.3, 8, player.damage, false, 70); } 
     else { spawnProjectile(player.x, player.y, baseAngle, 8, player.damage, false, 70); }
     player.attackQueue = player.attackCount - 1; player.burstTimer = 8; player.attackCooldown = player.baseAttackCooldown;
@@ -251,7 +424,6 @@ function activateParry() {
 function doSkill() {
     if (player.hasSkill && player.skillCooldown <= 0 && !isPaused && !player.isStunned && !player.isPulled && !player.isDashing) {
         playSound('swing'); player.skillCooldown = player.maxSkillCooldown; playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
-        // 플레이어 스킬 투사체 속도 15 -> 10 (너프)
         spawnParticles(player.x, player.y, '#f1c40f', 30); for (let i = 0; i < 8; i++) spawnProjectile(player.x, player.y, (Math.PI / 4) * i, 10, player.damage * player.skillDamageMult, false, 120, true);
     }
 }
@@ -263,7 +435,6 @@ function doDash() {
     let len = Math.hypot(dx, dy); player.dashDir = { x: dx/len, y: dy/len }; playerEl.style.opacity = '0.4'; setTimeout(() => playerEl.style.opacity = '1', 200);
 }
 
-// 투사체 생성
 function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = false, isGrab = false, owner = null, isLaser = false, isUnparryable = false, customClass = '') {
     const el = document.createElement('div');
     el.className = `slash ${isBoss ? 'boss-slash' : ''} ${isHeavy ? 'heavy-slash' : ''} ${isLaser ? 'laser-slash' : ''} ${isUnparryable ? 'unparryable-attack' : ''} ${customClass}`;
@@ -301,7 +472,7 @@ function bossLogic() {
 
         if (boss.state === 'idle') {
             boss.x += boss.vx; if (boss.x < boss.radius + 50 || boss.x > GAME_WIDTH - boss.radius - 50) boss.vx *= -1; boss.stateTimer++;
-            if (boss.stateTimer > 120) { // 90프레임 -> 120프레임 대기(패턴 공격 간격 늦춤)
+            if (boss.stateTimer > 120) {
                 const rand = Math.random(); boss.stateTimer = 0;
                 if (bossLevel < 2) { if (rand < 0.2) boss.state = 'pattern1'; else if (rand < 0.4) boss.state = 'pattern2'; else if (rand < 0.6) boss.state = 'pattern3'; else if (rand < 0.8) boss.state = 'pattern6'; else boss.state = 'pattern5'; } 
                 else if (bossLevel < 4) { if (rand < 0.15) boss.state = 'pattern1'; else if (rand < 0.3) boss.state = 'pattern5'; else if (rand < 0.45) boss.state = 'pattern6'; else if (rand < 0.6) boss.state = 'pattern8'; else if (rand < 0.75) boss.state = 'pattern9'; else boss.state = 'pattern3'; } 
@@ -311,11 +482,10 @@ function bossLogic() {
             boss.stateTimer++; const angleToPlayer = Math.atan2(player.y - boss.y, player.x - boss.x);
             if (boss.stateTimer === 1 && boss.state !== 'pattern7' && boss.state !== 'pattern8') boss.el.classList.add('eye-glow');
 
-            // 보스 패턴별 투사체 속도 대폭 너프 적용
-            if (boss.state === 'pattern1') { if(boss.stateTimer === 10) { playSound('swing'); boss.el.classList.remove('eye-glow'); boss.el.classList.add('boss-attack-anim'); spawnProjectile(boss.x, boss.y, angleToPlayer, 10 /* 18->10 */, 15, true, 100, false, false, boss); } if(boss.stateTimer > 40) resetBossState(boss); }
-            else if (boss.state === 'pattern2') { if(boss.stateTimer === 1) boss.el.classList.add('boss-telegraph'); if(boss.stateTimer === 100) { playSound('swing'); boss.el.classList.remove('eye-glow', 'boss-telegraph'); boss.el.classList.add('boss-attack-anim'); spawnProjectile(boss.x, boss.y, angleToPlayer, 6 /* 10->6 */, 20, true, 180, true, false, boss); } if(boss.stateTimer > 130) resetBossState(boss); }
-            else if (boss.state === 'pattern3') { if(boss.stateTimer === 20 || boss.stateTimer === 40 || boss.stateTimer === 60) { if(boss.stateTimer === 20) boss.el.classList.remove('eye-glow'); playSound('swing'); boss.el.classList.add('boss-attack-anim'); spawnProjectile(boss.x, boss.y, angleToPlayer, 6 /* 10->6 */, 10, true, 100, false, false, boss); setTimeout(() => boss.el.classList.remove('boss-attack-anim'), 100); } if(boss.stateTimer > 100) resetBossState(boss); }
-            else if (boss.state === 'pattern4') { if(boss.stateTimer === 30) { playSound('swing'); boss.el.classList.remove('eye-glow'); boss.el.classList.add('boss-attack-anim'); spawnProjectile(boss.x, boss.y, angleToPlayer, 7 /* 12->7 */, 20, true, 100, false, false, boss); } if(boss.stateTimer > 70) resetBossState(boss); }
+            if (boss.state === 'pattern1') { if(boss.stateTimer === 10) { playSound('swing'); boss.el.classList.remove('eye-glow'); boss.el.classList.add('boss-attack-anim'); spawnProjectile(boss.x, boss.y, angleToPlayer, 10, 15, true, 100, false, false, boss); } if(boss.stateTimer > 40) resetBossState(boss); }
+            else if (boss.state === 'pattern2') { if(boss.stateTimer === 1) boss.el.classList.add('boss-telegraph'); if(boss.stateTimer === 100) { playSound('swing'); boss.el.classList.remove('eye-glow', 'boss-telegraph'); boss.el.classList.add('boss-attack-anim'); spawnProjectile(boss.x, boss.y, angleToPlayer, 6, 20, true, 180, true, false, boss); } if(boss.stateTimer > 130) resetBossState(boss); }
+            else if (boss.state === 'pattern3') { if(boss.stateTimer === 20 || boss.stateTimer === 40 || boss.stateTimer === 60) { if(boss.stateTimer === 20) boss.el.classList.remove('eye-glow'); playSound('swing'); boss.el.classList.add('boss-attack-anim'); spawnProjectile(boss.x, boss.y, angleToPlayer, 6, 10, true, 100, false, false, boss); setTimeout(() => boss.el.classList.remove('boss-attack-anim'), 100); } if(boss.stateTimer > 100) resetBossState(boss); }
+            else if (boss.state === 'pattern4') { if(boss.stateTimer === 30) { playSound('swing'); boss.el.classList.remove('eye-glow'); boss.el.classList.add('boss-attack-anim'); spawnProjectile(boss.x, boss.y, angleToPlayer, 7, 20, true, 100, false, false, boss); } if(boss.stateTimer > 70) resetBossState(boss); }
             else if (boss.state === 'pattern5') { 
                 if (boss.stateTimer === 1) { boss.el.style.backgroundColor = '#f1c40f'; boss.el.classList.add('boss-telegraph', 'boss-shake'); let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'dash-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 10px red'; boss.el.appendChild(warning); }
                 if (boss.stateTimer === 60) { boss.el.classList.remove('eye-glow', 'boss-telegraph', 'boss-shake'); let warn = boss.el.querySelector('.dash-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-dashing'); boss.el.style.backgroundColor = '#e67e22'; boss.el.style.transform = 'translate(-50%, -50%) scale(1.1)'; boss.el.style.transition = 'none'; boss.vx = Math.cos(angleToPlayer) * boss.dashSpeed; boss.vy = Math.sin(angleToPlayer) * boss.dashSpeed; }
@@ -324,7 +494,8 @@ function bossLogic() {
                     if (getDistance(boss.x, boss.y, player.x, player.y) < player.radius + boss.radius) {
                         if (player.isDashing) { } 
                         else if (player.isParrying || player.autoParryTimer > 0) { 
-                            spawnParticles(player.x, player.y, '#0ff', 40); player.autoParryTimer = 6; playSound('parryed'); player.isParrying = false; playerEl.classList.remove('parrying', 'parry-cd'); playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
+                            createParryEffect(player.x, player.y); spawnDamageText(player.x, player.y - 40, 'PARRY!', 'crit');
+                            player.autoParryTimer = 6; playSound('parryed'); player.isParrying = false; playerEl.classList.remove('parrying', 'parry-cd'); playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
                             if (player.parryHeal) { player.hp = Math.min(player.maxHp, player.hp + 20); spawnDamageText(player.x, player.y, 20, 'heal'); }
                             player.parryCooldown = 0; if(parryStatusEl) { parryStatusEl.innerText = "돌진 저지 성공! (기절)"; parryStatusEl.style.color = "#2ecc71"; }
                             boss.hp -= 100; gainExp(50); boss.stateTimer = 90; bossHitEffect(boss, boss.x, boss.y, 100, true); checkBossDeath(boss);
@@ -335,24 +506,18 @@ function bossLogic() {
             }
             else if (boss.state === 'pattern6') { 
                 if (boss.stateTimer === 1) { boss.el.style.backgroundColor = '#8e44ad'; boss.el.classList.add('boss-telegraph', 'boss-shake'); let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'grab-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 15px #8e44ad'; boss.el.appendChild(warning); }
-                if (boss.stateTimer === 60) { playSound('swing'); boss.el.style.backgroundColor = '#c0392b'; boss.el.classList.remove('boss-telegraph', 'boss-shake'); let warn = boss.el.querySelector('.grab-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); spawnProjectile(boss.x, boss.y, angleToPlayer, 10 /* 20->10 */, 0, true, 120, false, true, boss, false, false, 'slash-purple'); }
+                if (boss.stateTimer === 60) { playSound('swing'); boss.el.style.backgroundColor = '#c0392b'; boss.el.classList.remove('boss-telegraph', 'boss-shake'); let warn = boss.el.querySelector('.grab-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); spawnProjectile(boss.x, boss.y, angleToPlayer, 10, 0, true, 120, false, true, boss, false, false, 'slash-purple'); }
                 if (boss.stateTimer > 100) resetBossState(boss);
             }
             else if (boss.state === 'pattern9') { 
                 if (boss.stateTimer === 1) { boss.el.style.backgroundColor = '#7f8c8d'; boss.el.classList.add('boss-telegraph'); let warning = document.createElement('div'); warning.innerText = '⛓️'; warning.className = 'chain-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '30px'; warning.style.textShadow = '0 0 15px #7f8c8d'; boss.el.appendChild(warning); }
-                if (boss.stateTimer === 50) { playSound('swing'); boss.el.style.backgroundColor = '#bdc3c7'; boss.el.classList.remove('boss-telegraph'); let warn = boss.el.querySelector('.chain-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); spawnProjectile(boss.x, boss.y, angleToPlayer, 12 /* 25->12 */, 5, true, 40, false, false, boss, false, false, 'slash-chain'); }
+                if (boss.stateTimer === 50) { playSound('swing'); boss.el.style.backgroundColor = '#bdc3c7'; boss.el.classList.remove('boss-telegraph'); let warn = boss.el.querySelector('.chain-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); spawnProjectile(boss.x, boss.y, angleToPlayer, 12, 5, true, 40, false, false, boss, false, false, 'slash-chain'); }
                 if (boss.stateTimer > 90) resetBossState(boss);
             }
             else if (boss.state === 'pattern8') { 
                 if (boss.stateTimer === 1) { boss.el.style.backgroundColor = '#2ecc71'; boss.el.classList.add('boss-telegraph'); let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'grab-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 15px #2ecc71'; boss.el.appendChild(warning); }
-                if (boss.stateTimer >= 60 && boss.stateTimer <= 80) { if (boss.stateTimer === 60) { boss.el.classList.remove('boss-telegraph'); let warn = boss.el.querySelector('.grab-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); } if (boss.stateTimer % 2 === 0) { playSound('swing'); spawnProjectile(boss.x, boss.y, angleToPlayer, 15 /* 35->15 */, 5, true, 40, false, false, boss, false, false, 'slash-green'); } }
+                if (boss.stateTimer >= 60 && boss.stateTimer <= 80) { if (boss.stateTimer === 60) { boss.el.classList.remove('boss-telegraph'); let warn = boss.el.querySelector('.grab-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); } if (boss.stateTimer % 2 === 0) { playSound('swing'); spawnProjectile(boss.x, boss.y, angleToPlayer, 15, 5, true, 40, false, false, boss, false, false, 'slash-green'); } }
                 if (boss.stateTimer > 100) resetBossState(boss);
-            }
-            else if (boss.state === 'pattern7') { 
-                if (boss.stateTimer === 1) { boss.el.style.backgroundColor = '#000'; boss.el.style.boxShadow = '0 0 20px #f00'; }
-                boss.x += Math.cos(angleToPlayer) * 1.5; boss.y += Math.sin(angleToPlayer) * 1.5; const timings = [30, 70, 100, 150, 180, 230, 260];
-                if (timings.includes(boss.stateTimer)) { let orbitAngle = (boss.stateTimer * 0.1) + Math.random(); let bx = player.x + Math.cos(orbitAngle) * 250; let by = player.y + Math.sin(orbitAngle) * 250; createBlaster(bx, by, Math.atan2(player.y - by, player.x - bx), boss); }
-                if (boss.stateTimer > 300) { resetBossState(boss); }
             }
         }
         boss.x = Math.max(boss.radius, Math.min(GAME_WIDTH - boss.radius, boss.x)); boss.y = Math.max(boss.radius, Math.min(GAME_HEIGHT - boss.radius, boss.y)); boss.el.style.left = boss.x + 'px'; boss.el.style.top = boss.y + 'px'; boss.uiEl.style.left = boss.x + 'px'; boss.uiEl.style.top = (boss.y - boss.radius - 15) + 'px';
@@ -434,14 +599,6 @@ function update() {
 
     bossLogic();
 
-    for (let i = blasters.length - 1; i >= 0; i--) {
-        let bl = blasters[i]; bl.timer--;
-        if (bl.timer === 0) {
-            playSound('swing'); bl.telegraph.remove(); spawnProjectile(bl.x, bl.y, bl.angle, 15 /* 25->15 */, 15, true, 100, true, false, bl.owner, true, true);
-            bl.el.style.opacity = '0'; bl.el.style.transform = `translate(-50%, -50%) rotate(${bl.angle}rad) translateX(-20px)`;
-        } else if (bl.timer === -15) { bl.el.remove(); blasters.splice(i, 1); }
-    }
-
     for (let i = projectiles.length - 1; i >= 0; i--) {
         let p = projectiles[i]; p.x += Math.cos(p.angle) * p.speed; p.y += Math.sin(p.angle) * p.speed; p.el.style.left = p.x + 'px'; p.el.style.top = p.y + 'px'; p.el.style.transform = `translate(-50%, -50%) rotate(${p.angle}rad)`; p.timer++;
 
@@ -455,7 +612,8 @@ function update() {
                     let isAutoParry = (player.autoParryTimer > 0 && !player.isParrying);
                     if (!isAutoParry) { if (player.parryHeal) { player.hp = Math.min(player.maxHp, player.hp + 20); spawnDamageText(player.x, player.y, 20, 'heal'); } }
 
-                    spawnParticles(player.x, player.y, '#0ff', 20); player.autoParryTimer = 6; playSound('parryed'); player.isParrying = false; 
+                    createParryEffect(player.x, player.y); spawnDamageText(player.x, player.y - 40, 'PARRY!', 'crit');
+                    player.autoParryTimer = 6; playSound('parryed'); player.isParrying = false; 
                     playerEl.classList.remove('parrying', 'parry-cd'); playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
                     
                     player.parryCooldown = 0; if(floatingCdEl) floatingCdEl.innerText = ""; if(parryStatusEl) parryStatusEl.style.color = "#2ecc71";
@@ -476,7 +634,6 @@ function update() {
                     let isChain = p.el.classList.contains('slash-chain');
                     if (p.isGrab) {
                         player.isStunned = true; player.stunTimer = 120; takeDamage(20); 
-                        let stunFx = document.createElement('div'); stunFx.className = 'stun-flash'; container.appendChild(stunFx); setTimeout(() => stunFx.remove(), 300);
                         p.el.remove(); projectiles.splice(i, 1);
                     } else if (isChain) {
                         player.isPulled = true; player.pullTimer = 40; player.pullTarget = p.owner; takeDamage(5); p.el.remove(); projectiles.splice(i, 1);
@@ -508,6 +665,7 @@ function update() {
         if(goModal) goModal.classList.remove('hidden'); 
         
         isPaused = true; 
+        const btnGiveUp = document.getElementById('btn-giveup');
         if(btnGiveUp) btnGiveUp.style.display = 'none'; 
         return;
     }
@@ -528,9 +686,9 @@ function restartGame() {
     if(goModal) goModal.classList.add('hidden');
 
     playerEl.classList.remove('player-grabbed', 'parrying', 'parry-deflect', 'parry-cd', 'hit-flash', 'player-stunned'); 
-    container.classList.remove('screen-shake', 'boss-hit-shake');
+    
     let stunInd = document.getElementById('stun-indicator'); if(stunInd) stunInd.remove();
-
+    const btnGiveUp = document.getElementById('btn-giveup');
     if(btnGiveUp) btnGiveUp.style.display = 'block';
     
     spawnBosses(); updateUI(); renderAugments(); 
