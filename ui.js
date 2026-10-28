@@ -1,6 +1,6 @@
 let oldStyle = document.getElementById('game-dynamic-style');
 if (oldStyle) oldStyle.remove();
-document.querySelectorAll('#opening-screen, #btn-giveup, #leaderboard-modal, #tutorial-modal, #level-up-modal').forEach(el => el.remove());
+document.querySelectorAll('#opening-screen, #btn-giveup, #leaderboard-modal, #tutorial-modal, #shop-modal').forEach(el => el.remove());
 
 const style = document.createElement('style');
 style.id = 'game-dynamic-style';
@@ -11,7 +11,6 @@ style.innerHTML = `
     #joystick-knob { width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.8); position: absolute; top: 40px; left: 40px; }
     #action-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; pointer-events: auto; }
     .mob-btn { width: 60px; height: 60px; border-radius: 50%; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.5); color: white; font-size: 24px; display: flex; justify-content: center; align-items: center; user-select: none; }
-    .mob-btn:active { background: rgba(255,255,255,0.5); }
     
     #player { background: #3498db; border: 2px solid #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; z-index: 20; position: relative; transition: filter 0.2s; }
     #player-sword { position: absolute; width: 45px; height: 10px; background: #bdc3c7; left: 25px; top: 20px; border-radius: 5px; transform-origin: left center; transition: all 0.3s; z-index: -1; }
@@ -30,19 +29,17 @@ style.innerHTML = `
 
     .player-stunned { background: #9b59b6 !important; box-shadow: 0 0 20px #8e44ad, inset 0 0 15px #000 !important; animation: stunShake 0.1s infinite; filter: grayscale(0.3); }
     @keyframes stunShake { 0%, 100% { transform: translate(2px, 1px) } 25% { transform: translate(-2px, -1px) } 50% { transform: translate(1px, 2px) } 75% { transform: translate(-1px, -2px) } }
-    .stun-indicator { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); color: #f1c40f; font-weight: bold; font-size: 18px; text-shadow: 0 0 10px red; white-space: nowrap; animation: blink 0.3s infinite; z-index: 50; }
-    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     
     .dash-shadow { position: absolute; width: 50px; height: 50px; background-color: rgba(52, 152, 219, 0.2); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 5; animation: shadowFade 0.3s ease-out forwards; }
     @keyframes shadowFade { 0% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); } }
 
-    /* ================================================= */
-    /* 새롭게 추가된 레벨 업 이펙트 CSS */
-    /* ================================================= */
     .levelup-text { position: absolute; color: #f1c40f; font-weight: bold; font-size: 32px; text-shadow: 0 0 10px #fff, 0 0 20px #f1c40f, 2px 2px 0 #000; pointer-events: none; z-index: 100; animation: levelUpFloat 1s ease-out forwards; }
     @keyframes levelUpFloat { 0% { transform: translate(-50%, 0) scale(0.5); opacity: 1; } 50% { transform: translate(-50%, -40px) scale(1.2); } 100% { transform: translate(-50%, -60px) scale(1); opacity: 0; } }
     .levelup-pillar { position: absolute; width: 60px; height: 200px; background: linear-gradient(to top, rgba(241,196,15,0.8), transparent); border-radius: 50%; transform: translate(-50%, -100%); pointer-events: none; z-index: 15; animation: pillarFade 0.6s ease-out forwards; }
     @keyframes pillarFade { 0% { opacity: 1; height: 0px; } 50% { opacity: 0.8; height: 200px; } 100% { opacity: 0; height: 300px; } }
+    
+    /* 골드 획득 이펙트 */
+    .gold-text { color: #f1c40f; font-size: 28px; font-weight: bold; text-shadow: 0 0 10px #e67e22, 2px 2px 0 #000; }
 
     #opening-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20, 25, 30, 0.95); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
     .title-text { font-size: 48px; font-weight: bold; text-shadow: 0 0 20px #3498db; margin-bottom: 10px; text-align: center; }
@@ -50,7 +47,8 @@ style.innerHTML = `
     .menu-btn { padding: 15px 40px; font-size: 20px; font-weight: bold; background: transparent; color: white; border: 2px solid #3498db; border-radius: 10px; cursor: pointer; transition: 0.2s; margin-top: 10px; width: 280px; }
     .menu-btn:hover { background: #3498db; box-shadow: 0 0 20px #3498db; transform: scale(1.05); }
 
-    #leaderboard-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 95%; max-width: 700px; height: 80vh; background: #1a1a2e; border: 4px solid #f1c40f; border-radius: 15px; padding: 0; display: flex; flex-direction: column; box-shadow: 0 0 40px rgba(241, 196, 15, 0.5); z-index: 500; }
+    /* 리더보드 및 상점 모달창 */
+    #leaderboard-modal, #shop-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 95%; max-width: 700px; height: 80vh; background: #1a1a2e; border: 4px solid #f1c40f; border-radius: 15px; padding: 0; display: flex; flex-direction: column; box-shadow: 0 0 40px rgba(241, 196, 15, 0.5); z-index: 500; }
     .lb-header { background: #2c3e50; padding: 15px; border-bottom: 3px solid #f1c40f; border-radius: 10px 10px 0 0; text-align: center; }
     .lb-header h2 { color: #f1c40f; margin: 0; text-shadow: 0 0 10px #f1c40f; font-size: 24px; }
     .lb-content { flex: 1; background: white; padding: 5px; }
@@ -63,29 +61,36 @@ style.innerHTML = `
     #augment-history { position: absolute; top: 10px; right: 10px; display: flex; gap: 12px; z-index: 50; flex-wrap: wrap-reverse; justify-content: flex-end; max-width: 300px; }
     .history-icon { position: relative; width: 40px; height: 40px; background: rgba(0,0,0,0.8); border: 1px solid #aaa; border-radius: 5px; display: flex; justify-content: center; align-items: center; font-size: 20px; box-shadow: 0 0 5px black; cursor: pointer; transition: 0.2s; pointer-events: auto; }
     .history-icon:hover { border-color: #f1c40f; box-shadow: 0 0 10px #f1c40f; z-index: 60; }
-    .custom-tooltip { visibility: hidden; background-color: rgba(10, 15, 20, 0.95); color: #fff; text-align: right; border: 2px solid #f1c40f; border-radius: 8px; padding: 12px; position: absolute; z-index: 1000; top: 120%; right: 0; white-space: nowrap; font-size: 14px; opacity: 0; transition: opacity 0.1s; box-shadow: 0 0 15px #f1c40f; line-height: 1.5; pointer-events: none;}
-    .history-icon:hover .custom-tooltip { visibility: visible; opacity: 1; }
-    .stack-badge { position: absolute; bottom: -6px; right: -6px; background: #e74c3c; color: white; font-size: 12px; font-weight: bold; border-radius: 50%; width: 20px; height: 20px; display: flex; justify-content: center; align-items: center; border: 2px solid #fff; box-shadow: 0 0 5px black; z-index: 55; }
-
+    
     .slash { position: absolute; pointer-events: none; z-index: 15; display: flex; justify-content: center; align-items: center; clip-path: polygon(0% 0%, 100% 50%, 0% 100%, 30% 50%); }
     .slash-elemental { background: transparent !important; clip-path: none !important; filter: drop-shadow(0 0 10px currentColor); }
     .slash-purple { background: #8e44ad !important; filter: drop-shadow(0 0 10px #8e44ad) !important; }
     .slash-green { background: #2ecc71 !important; clip-path: none !important; border-radius: 10px !important; filter: drop-shadow(0 0 8px #2ecc71) !important; }
     .slash-chain { background: #95a5a6 !important; width: 50px !important; height: 6px !important; clip-path: none !important; border-radius: 0 !important; filter: drop-shadow(0 0 5px #7f8c8d) !important; }
-    .slash-lightning { filter: drop-shadow(0 0 10px #00ffff) !important; }
-    .slash-dark { filter: drop-shadow(0 0 15px #8e44ad) !important; }
-
+    
     #btn-giveup { position: absolute; bottom: 20px; right: 20px; z-index: 900; background: #c0392b; color: white; border: 2px solid #fff; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; box-shadow: 0 0 15px rgba(0,0,0,0.8); transition: transform 0.2s; display: none; }
     #btn-giveup:hover { transform: scale(1.1); }
     @media (max-width: 768px) { #btn-giveup { bottom: 130px !important; right: 15px !important; opacity: 0.8; } }
 `;
 if(window.container) window.container.appendChild(style);
 
+// 인게임 UI 내 골드 표시 추가
+const playerUi = document.getElementById('player-ui');
+if(playerUi && !document.getElementById('gold-display')) {
+    playerUi.insertAdjacentHTML('afterbegin', `<div style="font-size: 18px; font-weight: bold; color: #f1c40f; margin-bottom: 5px; text-shadow: 1px 1px 2px black;">🪙 <span id="gold-display">${window.totalGold}</span> G</div>`);
+}
+
+window.updateGoldUI = function() {
+    const gd = document.getElementById('gold-display');
+    if(gd) gd.innerText = window.totalGold;
+};
+
 if(window.container) {
     window.container.insertAdjacentHTML('beforeend', `
         <div id="opening-screen">
             <div class="title-text">PARRY STRIKE<br><span style="font-size:24px; color:#e74c3c;">Boss Rush</span></div>
             <button id="btn-start-game" class="menu-btn" onclick="window.startGame()">▶ 게임 시작</button>
+            <button class="menu-btn" style="border-color: #e67e22; color: #e67e22;" onclick="window.openShop()">🛒 상점 (스킬/무기)</button>
             <button id="btn-show-lb-main" class="menu-btn" style="border-color: #9b59b6; color: #9b59b6;" onclick="window.showLeaderboard()">🏆 랭킹 리더보드 확인</button>
             <button class="menu-btn" style="border-color: #f1c40f; color: #f1c40f; margin-top: 10px;" onclick="window.showTutorial()">📖 패턴 요약 보기</button>
         </div>
@@ -97,6 +102,13 @@ if(window.container) {
                 <iframe class="leaderboard-iframe" src=""></iframe>
             </div>
             <button class="lb-close-btn" onclick="window.closeLeaderboard()">❌ 닫기</button>
+        </div>
+        
+        <div id="shop-modal" class="modal hidden">
+            <div class="lb-header"><h2>🛒 특수 상점 🛒</h2></div>
+            <div class="lb-content" style="overflow-y: auto; padding: 15px; color: black; background: #ecf0f1;" id="shop-content">
+            </div>
+            <button class="lb-close-btn" onclick="window.closeShop()">❌ 닫기</button>
         </div>
 
         <div id="tutorial-modal" class="modal hidden" style="padding:25px;">
