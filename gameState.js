@@ -1,50 +1,50 @@
-const container = document.getElementById('game-container');
-const playerEl = document.getElementById('player');
-const parryStatusEl = document.getElementById('parry-status');
-const skillStatusEl = document.getElementById('skill-status');
+// 전역 변수 (모든 파일에서 참조 가능하도록 window 객체 사용)
+window.container = document.getElementById('game-container');
+window.playerEl = document.getElementById('player');
+window.parryStatusEl = document.getElementById('parry-status');
+window.skillStatusEl = document.getElementById('skill-status');
 
-// Dash Status UI 세팅
-let dashStatusEl = document.getElementById('dash-status');
-if (!dashStatusEl && parryStatusEl && parryStatusEl.parentNode) {
-    dashStatusEl = document.createElement('div');
-    dashStatusEl.id = 'dash-status';
-    dashStatusEl.style.marginTop = '5px'; dashStatusEl.style.fontWeight = 'bold'; dashStatusEl.style.fontSize = '14px';
-    parryStatusEl.parentNode.insertBefore(dashStatusEl, parryStatusEl.nextSibling);
+window.dashStatusEl = document.getElementById('dash-status');
+if (!window.dashStatusEl && window.parryStatusEl && window.parryStatusEl.parentNode) {
+    window.dashStatusEl = document.createElement('div');
+    window.dashStatusEl.id = 'dash-status';
+    window.dashStatusEl.style.marginTop = '5px'; window.dashStatusEl.style.fontWeight = 'bold'; window.dashStatusEl.style.fontSize = '14px';
+    window.parryStatusEl.parentNode.insertBefore(window.dashStatusEl, window.parryStatusEl.nextSibling);
 }
 
-const floatingCdEl = document.getElementById('floating-cd') || document.createElement('div');
+window.floatingCdEl = document.getElementById('floating-cd') || document.createElement('div');
 
-// 플레이어 검 무기 세팅
-let playerSwordEl = document.getElementById('player-sword');
-if (!playerSwordEl && playerEl) {
-    playerSwordEl = document.createElement('div');
-    playerSwordEl.id = 'player-sword';
-    playerSwordEl.className = 'sword';
-    playerEl.appendChild(playerSwordEl);
+window.playerSwordEl = document.getElementById('player-sword');
+if (!window.playerSwordEl && window.playerEl) {
+    window.playerSwordEl = document.createElement('div');
+    window.playerSwordEl.id = 'player-sword';
+    window.playerSwordEl.className = 'sword';
+    window.playerEl.appendChild(window.playerSwordEl);
 }
 
 // 오디오 설정
-const audioDead = new Audio('./Dead.mp3'); const audioAttack1 = new Audio('./Attack1.mp3'); const audioAttack2 = new Audio('./Attack2.mp3'); const audioParry = new Audio('./Parry.mp3'); const audioParryed = new Audio('./Parryed.mp3'); const audioSwing = new Audio('./Swing.mp3');
-function playSound(type) {
-    let sound; if (type === 'hit') sound = Math.random() < 0.5 ? audioAttack1 : audioAttack2; else if (type === 'dead') sound = audioDead; else if (type === 'parry') sound = audioParry; else if (type === 'parryed') sound = audioParryed; else if (type === 'swing') sound = audioSwing;
+window.audioDead = new Audio('./Dead.mp3'); window.audioAttack1 = new Audio('./Attack1.mp3'); window.audioAttack2 = new Audio('./Attack2.mp3'); window.audioParry = new Audio('./Parry.mp3'); window.audioParryed = new Audio('./Parryed.mp3'); window.audioSwing = new Audio('./Swing.mp3');
+window.playSound = function(type) {
+    let sound; if (type === 'hit') sound = Math.random() < 0.5 ? window.audioAttack1 : window.audioAttack2; else if (type === 'dead') sound = window.audioDead; else if (type === 'parry') sound = window.audioParry; else if (type === 'parryed') sound = window.audioParryed; else if (type === 'swing') sound = window.audioSwing;
     if (sound) { sound.volume = 0.1; sound.currentTime = 0; sound.play().catch(e => {}); }
-}
+};
 
-// 전역 게임 상태 변수
-let GAME_WIDTH = container.clientWidth; 
-let GAME_HEIGHT = container.clientHeight;
-window.addEventListener('resize', () => { GAME_WIDTH = container.clientWidth; GAME_HEIGHT = container.clientHeight; });
+window.GAME_WIDTH = window.container ? window.container.clientWidth : window.innerWidth; 
+window.GAME_HEIGHT = window.container ? window.container.clientHeight : window.innerHeight;
+window.addEventListener('resize', () => { 
+    if(window.container) { window.GAME_WIDTH = window.container.clientWidth; window.GAME_HEIGHT = window.container.clientHeight; }
+});
 
-let isPaused = true;
-let isMobileEnv = false; 
-let bossLevel = 1; 
-let bosses = []; 
-let projectiles = []; 
-let blasters = [];
-let isAttacking = false;
+window.isPaused = true;
+window.isMobileEnv = false; 
+window.bossLevel = 1; 
+window.bosses = []; 
+window.projectiles = []; 
+window.blasters = [];
+window.isAttacking = false;
 
-let mousePos = { x: GAME_WIDTH / 2, y: GAME_HEIGHT / 2 };
-const keys = { w: false, a: false, s: false, d: false };
+window.mousePos = { x: window.GAME_WIDTH / 2, y: window.GAME_HEIGHT / 2 };
+window.keys = { w: false, a: false, s: false, d: false };
 
-let joyActive = false; let joyCenter = { x: 0, y: 0 }; let joystickDelta = { x: 0, y: 0 };
-let player; // characterModel.js 에서 초기화됨
+window.joyActive = false; window.joyCenter = { x: 0, y: 0 }; window.joystickDelta = { x: 0, y: 0 };
+window.player = null; // characterModel.js 에서 채워집니다.
