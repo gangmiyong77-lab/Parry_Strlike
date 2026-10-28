@@ -1,12 +1,42 @@
-window.initPlayer = () => ({
-    x: window.GAME_WIDTH / 2, y: window.GAME_HEIGHT - 100, speed: 2.2, radius: 25, hp: 100, maxHp: 100, exp: 0, maxExp: 200, level: 1, damage: 10,
-    attackCount: 1, baseAttackCooldown: 30, attackCooldown: 0, attackQueue: 0, burstTimer: 0,
-    isParrying: false, parryTimer: 0, parryCooldown: 0, autoParryTimer: 0, isDashing: false, dashTimer: 0, dashCooldown: 0, dashDir: {x: 1, y: 0},
-    hasSkill: false, skillCooldown: 0, maxSkillCooldown: 600,
-    isStunned: false, stunTimer: 0, isPulled: false, pullTimer: 0, pullTarget: null,
-    lifesteal: 0, skillDamageMult: 2, weaponType: 'normal', dashDamage: false, parryHeal: false, waveChance: false, augments: []
-});
+// 시작할 때 상점에서 해금한 장비와 스킬을 자동으로 장착합니다.
+window.initPlayer = () => {
+    let p = {
+        x: window.GAME_WIDTH / 2, y: window.GAME_HEIGHT - 100, speed: 2.2, radius: 25, hp: 100, maxHp: 100, exp: 0, maxExp: 200, level: 1, damage: 10,
+        attackCount: 1, baseAttackCooldown: 30, attackCooldown: 0, attackQueue: 0, burstTimer: 0,
+        isParrying: false, parryTimer: 0, parryCooldown: 0, autoParryTimer: 0, isDashing: false, dashTimer: 0, dashCooldown: 0, dashDir: {x: 1, y: 0},
+        skillCooldown: 0, maxSkillCooldown: 600,
+        isStunned: false, stunTimer: 0, isPulled: false, pullTimer: 0, pullTarget: null,
+        lifesteal: 0, skillDamageMult: 2, augments: []
+    };
+    
+    // 로컬 스토리지에 저장된 해금 데이터 적용
+    p.hasSkill = window.unlockedItems.includes('skill_whirlwind');
+    p.dashDamage = window.unlockedItems.includes('skill_dash');
+    p.parryHeal = window.unlockedItems.includes('skill_parry_heal');
+    p.waveChance = window.unlockedItems.includes('skill_wave');
+    p.weaponType = window.equippedWeapon || 'normal';
+
+    if (p.weaponType === 'dark') p.lifesteal = 2;
+    return p;
+};
 window.player = window.initPlayer();
+
+// 무기 외형 업데이트 함수
+window.updateWeaponAppearance = function() {
+    if(!window.playerSwordEl) return;
+    if (window.player.weaponType === 'fire') window.playerSwordEl.style.background = 'linear-gradient(to right, #e74c3c, #f1c40f)';
+    else if (window.player.weaponType === 'ice') window.playerSwordEl.style.background = 'linear-gradient(to right, #00ffff, #fff)';
+    else if (window.player.weaponType === 'lightning') window.playerSwordEl.style.background = 'linear-gradient(to right, #f1c40f, #00ffff)';
+    else if (window.player.weaponType === 'dark') window.playerSwordEl.style.background = 'linear-gradient(to right, #8e44ad, #2c3e50)';
+    else window.playerSwordEl.style.background = '#bdc3c7';
+    
+    // 스킬 버튼 활성화 상태 업데이트
+    if (window.player.hasSkill) {
+        if(window.skillStatusEl) window.skillStatusEl.classList.remove('hidden'); 
+        if(document.getElementById('btn-skill')) document.getElementById('btn-skill').classList.remove('hidden'); 
+        if(document.getElementById('mob-skill')) document.getElementById('mob-skill').classList.remove('hidden');
+    }
+};
 
 window.spawnBosses = function() {
     window.bosses.forEach(b => { b.el.remove(); b.uiEl.remove(); }); window.bosses = [];
