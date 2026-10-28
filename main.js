@@ -1,16 +1,90 @@
+// =====================================
+// 메인 상점 시스템 로직
+// =====================================
+window.shopItems = [
+    { id: 'weapon_fire', type: 'weapon', name: '🔥 화염검', desc: '화염 잔상 및 5의 화상 피해', price: 500 },
+    { id: 'weapon_ice', type: 'weapon', name: '❄️ 얼음검', desc: '4타 적중 시 보스를 얼림', price: 1000 },
+    { id: 'weapon_lightning', type: 'weapon', name: '⚡ 뇌전검', desc: '투사체의 속도가 크게 증가', price: 1500 },
+    { id: 'weapon_dark', type: 'weapon', name: '🌑 암흑검', desc: '거대 투사체 + 공격 시 체력 흡수', price: 2500 },
+    { id: 'skill_whirlwind', type: 'skill', name: '🌀 회전베기 (R버튼)', desc: '주변 전체를 휩쓰는 광역기', price: 800 },
+    { id: 'skill_dash', type: 'skill', name: '💨 돌진 베기', desc: '대시(Shift) 중 적과 충돌 시 데미지', price: 1200 },
+    { id: 'skill_parry_heal', type: 'skill', name: '💚 치유의 패링', desc: '패링 성공 시 체력 20 확정 회복', price: 1500 },
+    { id: 'skill_wave', type: 'skill', name: '🌊 파도 베기', desc: '기본 공격 시 30% 확률로 3갈래 발사', price: 2000 }
+];
+
+window.openShop = function() {
+    window.renderShop();
+    document.querySelectorAll('#shop-modal').forEach(el => el.classList.remove('hidden'));
+};
+
+window.closeShop = function() {
+    document.querySelectorAll('#shop-modal').forEach(el => el.classList.add('hidden'));
+};
+
+window.buyItem = function(id, price, type) {
+    if (window.totalGold < price) { alert("골드가 부족합니다!"); return; }
+    window.totalGold -= price;
+    window.unlockedItems.push(id);
+    if (type === 'weapon') window.equippedWeapon = id.replace('weapon_', '');
+    window.saveMeta();
+    window.renderShop();
+};
+
+window.equipWeapon = function(id) {
+    window.equippedWeapon = id.replace('weapon_', '');
+    window.saveMeta();
+    window.renderShop();
+};
+
+window.renderShop = function() {
+    const content = document.getElementById('shop-content');
+    if(!content) return;
+    let html = `<div style="text-align:center; font-weight:bold; font-size:20px; margin-bottom:15px; color:#c0392b;">현재 골드: 🪙 ${window.totalGold} G</div>`;
+    
+    window.shopItems.forEach(item => {
+        let isUnlocked = window.unlockedItems.includes(item.id);
+        let isEquipped = (item.type === 'weapon' && window.equippedWeapon === item.id.replace('weapon_', ''));
+        
+        let btnHtml = '';
+        if (!isUnlocked) {
+            btnHtml = `<button style="background:#27ae60; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold; cursor:pointer;" onclick="window.buyItem('${item.id}', ${item.price}, '${item.type}')">🪙 ${item.price}G 구매</button>`;
+        } else if (item.type === 'weapon') {
+            if (isEquipped) btnHtml = `<button style="background:#7f8c8d; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold; cursor:default;" disabled>장착됨</button>`;
+            else btnHtml = `<button style="background:#3498db; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold; cursor:pointer;" onclick="window.equipWeapon('${item.id}')">장착하기</button>`;
+        } else {
+            btnHtml = `<button style="background:#8e44ad; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold; cursor:default;" disabled>보유중</button>`;
+        }
+
+        html += `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:white; padding:10px; margin-bottom:10px; border-radius:8px; border-left: 5px solid ${item.type==='weapon' ? '#e74c3c' : '#8e44ad'}; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+                <div style="text-align:left;">
+                    <div style="font-weight:bold; font-size:16px; margin-bottom:3px;">${item.name}</div>
+                    <div style="font-size:12px; color:#555;">${item.desc}</div>
+                </div>
+                <div>${btnHtml}</div>
+            </div>
+        `;
+    });
+    content.innerHTML = html;
+};
+
+// =====================================
+// 게임 전역 제어
+// =====================================
 window.startGame = function() { 
     window.player = window.initPlayer(); 
     window.bossLevel = 1; 
     document.querySelectorAll('#opening-screen').forEach(el => el.style.display = 'none');
     document.querySelectorAll('#btn-giveup').forEach(el => el.style.display = 'block');
+    window.updateWeaponAppearance(); // 시작 시 상점 장착 무기 적용
     window.isPaused = false; 
     window.spawnBosses(); 
     window.updateUI(); 
     requestAnimationFrame(window.update); 
 };
+
 window.showTutorial = function() { document.querySelectorAll('#tutorial-modal').forEach(el => el.classList.remove('hidden')); };
 window.closeTutorial = function() { document.querySelectorAll('#tutorial-modal').forEach(el => el.classList.add('hidden')); };
-
 window.showLeaderboard = function() { 
     const nocacheUrl = "https://docs.google.com/spreadsheets/d/190rTIf_nsxscNZ3qhOHnHQgTBXnRvxGke9gcQ7CVyuQ/htmlembed?widget=false&headers=false&chrome=false&t=" + new Date().getTime();
     document.querySelectorAll('.leaderboard-iframe').forEach(iframe => iframe.src = nocacheUrl);
@@ -20,12 +94,10 @@ window.closeLeaderboard = function() { document.querySelectorAll('#leaderboard-m
 
 window.giveUpGame = function() {
     if (window.isPaused) return;
-    if (confirm("게임을 포기하시겠습니까?\n(현재 도달한 레벨로 리더보드에 랭킹을 등록할 수 있습니다.)")) window.player.hp = 0; 
+    if (confirm("게임을 포기하시겠습니까?\n(현재 도달한 레벨로 기록을 갱신할 수 있습니다.)")) window.player.hp = 0; 
 };
 
-window.returnToMenu = function() {
-    window.location.reload();
-};
+window.returnToMenu = function() { window.location.reload(); };
 
 window.submitScore = function() {
     const nicknameInput = document.getElementById('nickname-input');
@@ -62,11 +134,8 @@ window.submitScore = function() {
 window.restartGame = function() {
     window.bossLevel = 1; 
     window.player = window.initPlayer(); 
-    if(window.playerSwordEl) window.playerSwordEl.style.background = '#bdc3c7'; 
-    if(window.skillStatusEl) window.skillStatusEl.classList.add('hidden');
-    if(document.getElementById('btn-skill')) document.getElementById('btn-skill').classList.add('hidden');
-    if(document.getElementById('mob-skill')) document.getElementById('mob-skill').classList.add('hidden');
-
+    window.updateWeaponAppearance();
+    
     window.projectiles.forEach(p => p.el.remove()); window.projectiles = []; window.blasters.forEach(b => b.el.remove()); window.blasters = [];
     document.querySelectorAll('#game-over-modal').forEach(el => el.classList.add('hidden'));
 
@@ -75,10 +144,13 @@ window.restartGame = function() {
     let stunInd = document.getElementById('stun-indicator'); if(stunInd) stunInd.remove();
     document.querySelectorAll('#btn-giveup').forEach(el => el.style.display = 'block');
     
-    window.spawnBosses(); window.updateUI(); window.renderAugments(); 
+    window.spawnBosses(); window.updateUI(); 
     window.isPaused = false; requestAnimationFrame(window.update);
 };
 
+// =====================================
+// 게임 메인 루프 (보스 패턴 & 이동)
+// =====================================
 window.bossLogic = function() {
     window.bosses.forEach(boss => {
         if (boss.isFrozen) { boss.freezeTimer--; if (boss.freezeTimer <= 0) { boss.isFrozen = false; boss.el.classList.remove('frozen-boss'); } boss.el.style.left = boss.x + 'px'; boss.el.style.top = boss.y + 'px'; boss.uiEl.style.left = boss.x + 'px'; boss.uiEl.style.top = (boss.y - boss.radius - 15) + 'px'; return; }
@@ -222,76 +294,4 @@ window.update = function() {
     for (let i = window.projectiles.length - 1; i >= 0; i--) {
         let p = window.projectiles[i]; p.x += Math.cos(p.angle) * p.speed; p.y += Math.sin(p.angle) * p.speed; p.el.style.left = p.x + 'px'; p.el.style.top = p.y + 'px'; p.el.style.transform = `translate(-50%, -50%) rotate(${p.angle}rad)`; p.timer++;
 
-        if (!p.isBoss && window.player.weaponType === 'fire' && p.timer % 2 === 0) { window.spawnFireTrail(p.x, p.y); }
-        if (p.x < -100 || p.x > window.GAME_WIDTH + 100 || p.y < -100 || p.y > window.GAME_HEIGHT + 100) { p.el.remove(); window.projectiles.splice(i, 1); continue; }
-
-        if (p.isBoss) {
-            if (window.getDistance(p.x, p.y, window.player.x, window.player.y) < window.player.radius + p.radius) {
-                if (window.player.isDashing) { } 
-                else if ((window.player.isParrying || window.player.autoParryTimer > 0) && !p.isUnparryable) {
-                    let isAutoParry = (window.player.autoParryTimer > 0 && !window.player.isParrying);
-                    if (!isAutoParry) { if (window.player.parryHeal) { window.player.hp = Math.min(window.player.maxHp, window.player.hp + 20); window.spawnDamageText(window.player.x, window.player.y, 20, 'heal'); } }
-
-                    window.createParryEffect(window.player.x, window.player.y); window.spawnDamageText(window.player.x, window.player.y - 40, 'PARRY!', 'crit');
-                    window.player.autoParryTimer = 6; window.playSound('parryed'); window.player.isParrying = false; 
-                    window.playerEl.classList.remove('parrying', 'parry-cd'); window.playerEl.classList.add('parry-deflect'); setTimeout(() => window.playerEl.classList.remove('parry-deflect'), 200);
-                    
-                    window.player.parryCooldown = 0; if(window.floatingCdEl) window.floatingCdEl.innerText = ""; if(window.parryStatusEl) window.parryStatusEl.style.color = "#2ecc71";
-                    
-                    if (p.el.classList.contains('slash-purple')) {
-                        if(window.parryStatusEl) window.parryStatusEl.innerText = "스턴 공격 패링 성공!";
-                        if(p.owner) { p.owner.hp -= 20; window.bossHitEffect(p.owner, p.owner.x, p.owner.y, 20, true); window.checkBossDeath(p.owner); } p.el.remove(); window.projectiles.splice(i, 1); 
-                    } else if (p.el.classList.contains('slash-chain')) {
-                        if(window.parryStatusEl) window.parryStatusEl.innerText = "사슬 튕겨내기 성공!";
-                        if(p.owner) { p.owner.hp -= 20; window.bossHitEffect(p.owner, p.owner.x, p.owner.y, 20, true); window.checkBossDeath(p.owner); } p.el.remove(); window.projectiles.splice(i, 1); 
-                    } else {
-                        if(window.parryStatusEl) window.parryStatusEl.innerText = "패링 반사 성공!";
-                        p.isBoss = false; p.el.classList.remove('boss-slash', 'heavy-slash', 'laser-slash', 'unparryable-attack', 'slash-green');
-                        let target = window.isMobileEnv ? window.getClosestBossTo(p.x, p.y) : window.getClosestBossTo(window.mousePos.x, window.mousePos.y); 
-                        p.angle = target ? Math.atan2(target.y - p.y, target.x - p.x) : p.angle + Math.PI; p.speed *= 1.5; p.damage *= 2;
-                    }
-                } else {
-                    let isChain = p.el.classList.contains('slash-chain');
-                    if (p.isGrab) {
-                        window.player.isStunned = true; window.player.stunTimer = 120; window.takeDamage(20); 
-                        p.el.remove(); window.projectiles.splice(i, 1);
-                    } else if (isChain) {
-                        window.player.isPulled = true; window.player.pullTimer = 40; window.player.pullTarget = p.owner; window.takeDamage(5); p.el.remove(); window.projectiles.splice(i, 1);
-                    } else {
-                        window.takeDamage(p.damage); p.el.remove(); window.projectiles.splice(i, 1); 
-                    }
-                }
-            }
-        } else {
-            for(let j = window.bosses.length - 1; j >= 0; j--) {
-                let b = window.bosses[j];
-                if (window.getDistance(p.x, p.y, b.x, b.y) < b.radius + p.radius) {
-                    b.hp -= p.damage; window.gainExp(p.damage);
-                    if (window.player.lifesteal > 0 && window.player.hp < window.player.maxHp) window.player.hp = Math.min(window.player.maxHp, window.player.hp + window.player.lifesteal);
-                    window.updateUI(); window.bossHitEffect(b, p.x, p.y, p.damage, false);
-                    if (window.player.weaponType === 'ice') { b.freezeStack++; window.spawnParticles(p.x, p.y, '#00ffff', 5); if (b.freezeStack >= 4) { b.isFrozen = true; b.freezeTimer = 180; b.freezeStack = 0; b.el.classList.add('frozen-boss'); window.spawnDamageText(b.x, b.y, 'FREEZE!', 'crit'); } } else if (window.player.weaponType === 'fire') { window.spawnParticles(p.x, p.y, '#e67e22', 15); b.hp -= 5; window.spawnDamageText(b.x, b.y + 20, 5, 'fire'); }
-                    p.el.remove(); window.projectiles.splice(i, 1); window.checkBossDeath(b); break;
-                }
-            }
-        }
-    }
-
-    if (window.player.hp <= 0) {
-        window.playSound('dead'); 
-        const finalScore = document.getElementById('final-score');
-        if(finalScore) finalScore.innerText = `현재 도달: Boss Wave ${window.bossLevel} / 플레이어 Lv. ${window.player.level}`;
-        
-        document.querySelectorAll('#game-over-modal').forEach(el => el.classList.remove('hidden')); 
-        window.isPaused = true; 
-        document.querySelectorAll('#btn-giveup').forEach(el => el.style.display = 'none'); 
-        
-        // 버튼 텍스트 초기화
-        const submitBtn = document.getElementById('btn-submit-score');
-        if (submitBtn) { submitBtn.innerHTML = '기록 갱신하기'; submitBtn.disabled = false; submitBtn.style.background = '#27ae60'; }
-        const nickInput = document.getElementById('nickname-input');
-        if (nickInput) { nickInput.disabled = false; }
-        return;
-    }
-    
-    requestAnimationFrame(window.update);
-};
+        if (!p.isBoss &&
