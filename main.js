@@ -1,5 +1,75 @@
 // =====================================
-// 메인 상점 시스템 로직
+// 로그인(계정) 데이터베이스 시뮬레이션
+// =====================================
+window.getUsers = function() {
+    return JSON.parse(localStorage.getItem('parry_users')) || {};
+};
+
+// 계정 생성 (회원가입)
+window.registerGame = function() {
+    const name = document.getElementById('login-input-name').value.trim();
+    const pass = document.getElementById('login-input-pass').value.trim();
+    if(!name || !pass) { alert("닉네임과 비밀번호를 모두 입력해주세요!"); return; }
+    
+    let users = window.getUsers();
+    if(users[name]) {
+        alert("이미 존재하는 닉네임입니다! [로그인] 버튼을 눌러주세요."); 
+        return;
+    }
+    
+    users[name] = pass; // 아이디: 비밀번호 쌍으로 저장
+    localStorage.setItem('parry_users', JSON.stringify(users));
+    localStorage.setItem('parry_current_user', name);
+    alert(`[${name}] 계정이 생성되었습니다!`);
+    window.checkLoginStatus();
+};
+
+// 로그인
+window.loginGame = function() {
+    const name = document.getElementById('login-input-name').value.trim();
+    const pass = document.getElementById('login-input-pass').value.trim();
+    if(!name || !pass) { alert("닉네임과 비밀번호를 모두 입력해주세요!"); return; }
+    
+    let users = window.getUsers();
+    if(!users[name]) {
+        alert("존재하지 않는 닉네임입니다. [계정 생성]을 눌러주세요."); 
+        return;
+    }
+    if(users[name] !== pass) {
+        alert("비밀번호가 틀렸습니다!"); 
+        return;
+    }
+    
+    localStorage.setItem('parry_current_user', name);
+    window.checkLoginStatus();
+};
+
+// 로그인 상태 체크
+window.checkLoginStatus = function() {
+    const currentUser = localStorage.getItem('parry_current_user');
+    if (currentUser) {
+        document.querySelectorAll('#login-screen').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('#opening-screen').forEach(el => el.style.display = 'flex');
+        document.getElementById('display-username').innerText = currentUser;
+        if(document.getElementById('go-username')) document.getElementById('go-username').innerText = currentUser;
+    } else {
+        document.querySelectorAll('#login-screen').forEach(el => el.style.display = 'flex');
+        document.querySelectorAll('#opening-screen').forEach(el => el.style.display = 'none');
+    }
+};
+
+window.logoutGame = function() {
+    if(confirm("로그아웃 하시겠습니까?")) {
+        localStorage.removeItem('parry_current_user');
+        window.location.reload();
+    }
+};
+
+window.checkLoginStatus();
+
+
+// =====================================
+// 상점 시스템 로직
 // =====================================
 window.shopItems = [
     { id: 'weapon_fire', type: 'weapon', name: '🔥 화염검', desc: '화염 잔상 및 5의 화상 피해', price: 500 },
@@ -12,43 +82,32 @@ window.shopItems = [
     { id: 'skill_wave', type: 'skill', name: '🌊 파도 베기', desc: '기본 공격 시 30% 확률로 3갈래 발사', price: 2000 }
 ];
 
-window.openShop = function() {
-    window.renderShop();
-    document.querySelectorAll('#shop-modal').forEach(el => el.classList.remove('hidden'));
-};
-
-window.closeShop = function() {
-    document.querySelectorAll('#shop-modal').forEach(el => el.classList.add('hidden'));
-};
+window.openShop = function() { window.renderShop(); document.querySelectorAll('#shop-modal').forEach(el => el.classList.remove('hidden')); };
+window.closeShop = function() { document.querySelectorAll('#shop-modal').forEach(el => el.classList.add('hidden')); };
 
 window.buyItem = function(id, price, type) {
     if (window.totalGold < price) { alert("골드가 부족합니다!"); return; }
     window.totalGold -= price;
     window.unlockedItems.push(id);
     if (type === 'weapon') window.equippedWeapon = id.replace('weapon_', '');
-    window.saveMeta();
-    window.renderShop();
+    window.saveMeta(); window.renderShop();
 };
-
 window.equipWeapon = function(id) {
     window.equippedWeapon = id.replace('weapon_', '');
-    window.saveMeta();
-    window.renderShop();
+    window.saveMeta(); window.renderShop();
 };
 
 window.renderShop = function() {
     const content = document.getElementById('shop-content');
     if(!content) return;
     let html = `<div style="text-align:center; font-weight:bold; font-size:20px; margin-bottom:15px; color:#c0392b;">현재 골드: 🪙 ${window.totalGold} G</div>`;
-    
     window.shopItems.forEach(item => {
         let isUnlocked = window.unlockedItems.includes(item.id);
         let isEquipped = (item.type === 'weapon' && window.equippedWeapon === item.id.replace('weapon_', ''));
         
         let btnHtml = '';
-        if (!isUnlocked) {
-            btnHtml = `<button style="background:#27ae60; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold; cursor:pointer;" onclick="window.buyItem('${item.id}', ${item.price}, '${item.type}')">🪙 ${item.price}G 구매</button>`;
-        } else if (item.type === 'weapon') {
+        if (!isUnlocked) btnHtml = `<button style="background:#27ae60; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold; cursor:pointer;" onclick="window.buyItem('${item.id}', ${item.price}, '${item.type}')">🪙 ${item.price}G 구매</button>`;
+        else if (item.type === 'weapon') {
             if (isEquipped) btnHtml = `<button style="background:#7f8c8d; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold; cursor:default;" disabled>장착됨</button>`;
             else btnHtml = `<button style="background:#3498db; color:white; border:none; padding:8px 12px; border-radius:5px; font-weight:bold; cursor:pointer;" onclick="window.equipWeapon('${item.id}')">장착하기</button>`;
         } else {
@@ -69,12 +128,12 @@ window.renderShop = function() {
 };
 
 // =====================================
-// 게임 전역 제어
+// 게임 메인 제어 및 구글 폼 전송
 // =====================================
 window.startGame = function() { 
     window.player = window.initPlayer(); 
     window.bossLevel = 1; 
-    document.querySelectorAll('#opening-screen').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('#opening-screen, #login-screen').forEach(el => el.style.display = 'none');
     document.querySelectorAll('#btn-giveup').forEach(el => el.style.display = 'block');
     window.updateWeaponAppearance(); 
     window.isPaused = false; 
@@ -99,15 +158,14 @@ window.giveUpGame = function() {
 
 window.returnToMenu = function() { window.location.reload(); };
 
+// ★ 구글 폼으로 모든 데이터 전송 ★
 window.submitScore = function() {
-    const nicknameInput = document.getElementById('nickname-input');
-    if(!nicknameInput) return;
-    const nickname = nicknameInput.value.trim();
-    if (!nickname) { alert("닉네임을 입력해주세요!"); return; }
+    const savedName = localStorage.getItem('parry_current_user');
+    if (!savedName) { alert("로그인 정보가 없습니다."); return; }
 
     let bestLevel = parseInt(localStorage.getItem('parry_best_level')) || 0;
-    if (window.player.level <= bestLevel) {
-        alert(`기존 최고 기록(Lv.${bestLevel})보다 높아야 갱신이 가능합니다!\n더 높은 레벨에 도달해주세요.`);
+    if (window.bossLevel <= bestLevel) {
+        alert(`기존 최고 기록(웨이브 ${bestLevel})보다 높아야 갱신이 가능합니다!\n더 높은 웨이브에 도달해주세요.`);
         return;
     }
 
@@ -117,16 +175,34 @@ window.submitScore = function() {
     const now = new Date();
     const dateStr = `${now.getFullYear()}. ${now.getMonth()+1}. ${now.getDate()}. ${now.getHours()}:${now.getMinutes() < 10 ? '0' : ''}${now.getMinutes()}`;
 
+    // 비밀번호 불러오기
+    let users = window.getUsers();
+    let userPass = users[savedName] || "정보없음";
+
+    // 구매한 아이템 목록 문자열로 변환
+    let boughtItemsNames = [];
+    window.unlockedItems.forEach(id => {
+        let found = window.shopItems.find(item => item.id === id);
+        if(found) boughtItemsNames.push(found.name);
+    });
+    let itemStr = boughtItemsNames.length > 0 ? boughtItemsNames.join(', ') : '구매내역 없음';
+
     const formUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSdUNFntaS4Uc79QYWnjTPDOwDV82SZlLKvucKeQ9l8l6ybHXQ/formResponse';
     const formData = new FormData();
-    formData.append('entry.225873384', nickname);
-    formData.append('entry.1187942698', window.player.level);
-    formData.append('entry.1748204136', dateStr);
+    
+    // 선생님이 주신 7개의 ID에 맞춰서 데이터 매핑
+    formData.append('entry.225873384', savedName);              // 닉네임
+    formData.append('entry.1574948682', userPass);              // 비밀번호
+    formData.append('entry.1748204136', dateStr);               // 날짜
+    formData.append('entry.1187942698', window.player.level);   // 최고 레벨
+    formData.append('entry.1704909002', window.bossLevel);      // 최고 라운드
+    formData.append('entry.1662106112', window.totalGold);      // 보유 돈
+    formData.append('entry.498265173', itemStr);                // 구매 목록
 
     fetch(formUrl, { method: 'POST', mode: 'no-cors', body: formData })
         .then(() => { 
-            submitBtn.innerHTML = '✅ 갱신 완료!'; submitBtn.style.background = '#34495e'; nicknameInput.disabled = true; 
-            localStorage.setItem('parry_best_level', window.player.level); 
+            submitBtn.innerHTML = '✅ 갱신 및 시트 저장 완료!'; submitBtn.style.background = '#34495e'; 
+            localStorage.setItem('parry_best_level', window.bossLevel); 
         })
         .catch(e => { submitBtn.innerHTML = '❌ 전송 실패 (재시도)'; submitBtn.disabled = false; });
 };
@@ -149,7 +225,7 @@ window.restartGame = function() {
 };
 
 // =====================================
-// 게임 메인 루프 (보스 패턴 & 이동)
+// 게임 루프 (보스 패턴 & 이동)
 // =====================================
 window.bossLogic = function() {
     window.bosses.forEach(boss => {
@@ -228,20 +304,15 @@ window.update = function() {
     if (window.isAttacking) window.doAttack();
     if (window.player.autoParryTimer > 0) window.player.autoParryTimer--;
     if (window.player.dashCooldown > 0) window.player.dashCooldown--;
-    if(window.dashStatusEl) {
-        if (window.player.dashCooldown <= 0) { window.dashStatusEl.innerText = "[Shift] 대시 준비 완료"; window.dashStatusEl.style.color = "#2ecc71"; } else { window.dashStatusEl.innerText = `대시 쿨타임: ${(window.player.dashCooldown/60).toFixed(1)}초`; window.dashStatusEl.style.color = "#7f8c8d"; }
-    }
-
+    
     if (window.player.isStunned) {
         window.player.stunTimer--; 
-        if(window.parryStatusEl) { window.parryStatusEl.innerText = `기절됨! (${Math.ceil(window.player.stunTimer/60)}초)`; window.parryStatusEl.style.color = "red"; }
         let stunInd = document.getElementById('stun-indicator');
         if (!stunInd) { stunInd = document.createElement('div'); stunInd.id = 'stun-indicator'; stunInd.className = 'stun-indicator'; stunInd.innerText = '기절!'; window.playerEl.appendChild(stunInd); window.playerEl.classList.add('player-stunned'); }
         if (window.player.stunTimer <= 0) { window.player.isStunned = false; if (stunInd) stunInd.remove(); window.playerEl.classList.remove('player-stunned'); }
     } else if (window.player.isPulled) {
         window.player.pullTimer--;
         if (window.player.pullTarget && window.player.pullTarget.hp > 0) { let dx = window.player.pullTarget.x - window.player.x; let dy = window.player.pullTarget.y - window.player.y; let dist = Math.hypot(dx, dy); if (dist > 30) { window.player.x += (dx / dist) * 10; window.player.y += (dy / dist) * 10; } }
-        if(window.parryStatusEl) { window.parryStatusEl.innerText = "사슬에 끌려가는 중!!"; window.parryStatusEl.style.color = "orange"; }
         if (window.player.pullTimer <= 0) window.player.isPulled = false;
     } else if (window.player.isDashing) {
         window.player.x += window.player.dashDir.x * 15; window.player.y += window.player.dashDir.y * 15; window.player.x = Math.max(window.player.radius, Math.min(window.GAME_WIDTH - window.player.radius, window.player.x)); window.player.y = Math.max(window.player.radius, Math.min(window.GAME_HEIGHT - window.player.radius, window.player.y)); window.player.dashTimer--; if (window.player.dashTimer % 2 === 0) window.createDashShadow();
@@ -273,21 +344,12 @@ window.update = function() {
         if (window.player.parryTimer <= 0) { window.player.isParrying = false; window.playerEl.classList.remove('parrying'); window.playerEl.classList.add('parry-cd'); window.player.parryCooldown = 300; }
     } else if (!window.player.isStunned && !window.player.isPulled) {
         if (window.player.parryCooldown > 0) {
-            window.player.parryCooldown--; let secondsLeft = Math.ceil(window.player.parryCooldown / 60);
-            if(window.parryStatusEl) { window.parryStatusEl.innerText = `패링 쿨타임: ${secondsLeft}초`; window.parryStatusEl.style.color = "#e74c3c"; }
-            if(window.floatingCdEl) { window.floatingCdEl.innerText = `${secondsLeft}초`; }
-            if (window.player.parryCooldown <= 0) { 
-                if(window.parryStatusEl) { window.parryStatusEl.innerText = "패링 준비 완료"; window.parryStatusEl.style.color = "#3498db"; }
-                if(window.floatingCdEl) { window.floatingCdEl.innerText = ""; } 
-                window.playerEl.classList.remove('parry-cd'); 
-            }
+            window.player.parryCooldown--; 
+            if (window.player.parryCooldown <= 0) { window.playerEl.classList.remove('parry-cd'); }
         }
     }
 
-    if (window.player.hasSkill && window.skillStatusEl) {
-        if (window.player.skillCooldown > 0) { window.player.skillCooldown--; window.skillStatusEl.innerText = `회전베기: ${Math.ceil(window.player.skillCooldown / 60)}초`; window.skillStatusEl.style.color = "#e74c3c"; } 
-        else { window.skillStatusEl.innerText = "회전베기: 준비 완료!"; window.skillStatusEl.style.color = "#f1c40f"; }
-    }
+    if (window.player.hasSkill && window.player.skillCooldown > 0) { window.player.skillCooldown--; }
 
     window.bossLogic();
 
@@ -308,16 +370,13 @@ window.update = function() {
                     window.player.autoParryTimer = 6; window.playSound('parryed'); window.player.isParrying = false; 
                     window.playerEl.classList.remove('parrying', 'parry-cd'); window.playerEl.classList.add('parry-deflect'); setTimeout(() => window.playerEl.classList.remove('parry-deflect'), 200);
                     
-                    window.player.parryCooldown = 0; if(window.floatingCdEl) window.floatingCdEl.innerText = ""; if(window.parryStatusEl) window.parryStatusEl.style.color = "#2ecc71";
+                    window.player.parryCooldown = 0; 
                     
                     if (p.el.classList.contains('slash-purple')) {
-                        if(window.parryStatusEl) window.parryStatusEl.innerText = "스턴 공격 패링 성공!";
                         if(p.owner) { p.owner.hp -= 20; window.bossHitEffect(p.owner, p.owner.x, p.owner.y, 20, true); window.checkBossDeath(p.owner); } p.el.remove(); window.projectiles.splice(i, 1); 
                     } else if (p.el.classList.contains('slash-chain')) {
-                        if(window.parryStatusEl) window.parryStatusEl.innerText = "사슬 튕겨내기 성공!";
                         if(p.owner) { p.owner.hp -= 20; window.bossHitEffect(p.owner, p.owner.x, p.owner.y, 20, true); window.checkBossDeath(p.owner); } p.el.remove(); window.projectiles.splice(i, 1); 
                     } else {
-                        if(window.parryStatusEl) window.parryStatusEl.innerText = "패링 반사 성공!";
                         p.isBoss = false; p.el.classList.remove('boss-slash', 'heavy-slash', 'laser-slash', 'unparryable-attack', 'slash-green');
                         let target = window.isMobileEnv ? window.getClosestBossTo(p.x, p.y) : window.getClosestBossTo(window.mousePos.x, window.mousePos.y); 
                         p.angle = target ? Math.atan2(target.y - p.y, target.x - p.x) : p.angle + Math.PI; p.speed *= 1.5; p.damage *= 2;
@@ -357,62 +416,36 @@ window.update = function() {
         window.isPaused = true; 
         document.querySelectorAll('#btn-giveup').forEach(el => el.style.display = 'none'); 
         
-        const submitBtn = document.getElementById('btn-submit-score');
-        if (submitBtn) { submitBtn.innerHTML = '기록 갱신하기'; submitBtn.disabled = false; submitBtn.style.background = '#27ae60'; }
-        const nickInput = document.getElementById('nickname-input');
-        if (nickInput) { nickInput.disabled = false; }
-        
-        // 사망 시에 마우스 쿨타임 숨김
         const mouseCdContainer = document.getElementById('mouse-cd-container');
         if (mouseCdContainer) mouseCdContainer.style.display = 'none';
+        
+        const submitBtn = document.getElementById('btn-submit-score');
+        if (submitBtn) { submitBtn.innerHTML = '기록 갱신하기'; submitBtn.disabled = false; submitBtn.style.background = '#27ae60'; }
         
         return;
     }
     
-    // =====================================
-    // 마우스 커서 주변 쿨타임 UI 업데이트 로직
-    // =====================================
+    // 마우스 쿨타임 UI 업데이트
     const mouseCdContainer = document.getElementById('mouse-cd-container');
-    if (mouseCdContainer) {
-        if (window.isMobileEnv) {
-            mouseCdContainer.style.display = 'none';
-        } else {
-            mouseCdContainer.style.display = 'block';
-            mouseCdContainer.style.left = window.mousePos.x + 'px';
-            mouseCdContainer.style.top = window.mousePos.y + 'px';
+    if (mouseCdContainer && !window.isMobileEnv) {
+        mouseCdContainer.style.display = 'block';
+        mouseCdContainer.style.left = window.mousePos.x + 'px';
+        mouseCdContainer.style.top = window.mousePos.y + 'px';
 
-            const dashEl = document.getElementById('cd-dash');
-            if (window.player.dashCooldown > 0) {
-                dashEl.innerText = `대시: ${(window.player.dashCooldown/60).toFixed(1)}s`;
-                dashEl.style.color = '#7f8c8d';
-            } else {
-                dashEl.innerText = '대시: ON';
-                dashEl.style.color = '#2ecc71';
-            }
+        const dashEl = document.getElementById('cd-dash');
+        if (window.player.dashCooldown > 0) { dashEl.innerText = `대시: ${(window.player.dashCooldown/60).toFixed(1)}s`; dashEl.style.color = '#7f8c8d'; } 
+        else { dashEl.innerText = '대시: ON'; dashEl.style.color = '#2ecc71'; }
 
-            const parryEl = document.getElementById('cd-parry');
-            if (window.player.parryCooldown > 0) {
-                parryEl.innerText = `패링: ${Math.ceil(window.player.parryCooldown/60)}s`;
-                parryEl.style.color = '#e74c3c';
-            } else {
-                parryEl.innerText = '패링: ON';
-                parryEl.style.color = '#3498db';
-            }
+        const parryEl = document.getElementById('cd-parry');
+        if (window.player.parryCooldown > 0) { parryEl.innerText = `패링: ${Math.ceil(window.player.parryCooldown/60)}s`; parryEl.style.color = '#e74c3c'; } 
+        else { parryEl.innerText = '패링: ON'; parryEl.style.color = '#3498db'; }
 
-            const skillEl = document.getElementById('cd-skill');
-            if (window.player.hasSkill) {
-                skillEl.style.display = 'block';
-                if (window.player.skillCooldown > 0) {
-                    skillEl.innerText = `스킬: ${Math.ceil(window.player.skillCooldown/60)}s`;
-                    skillEl.style.color = '#e74c3c';
-                } else {
-                    skillEl.innerText = '스킬: ON';
-                    skillEl.style.color = '#f1c40f';
-                }
-            } else {
-                skillEl.style.display = 'none';
-            }
-        }
+        const skillEl = document.getElementById('cd-skill');
+        if (window.player.hasSkill) {
+            skillEl.style.display = 'block';
+            if (window.player.skillCooldown > 0) { skillEl.innerText = `스킬: ${Math.ceil(window.player.skillCooldown/60)}s`; skillEl.style.color = '#e74c3c'; } 
+            else { skillEl.innerText = '스킬: ON'; skillEl.style.color = '#f1c40f'; }
+        } else { skillEl.style.display = 'none'; }
     }
 
     requestAnimationFrame(window.update);
