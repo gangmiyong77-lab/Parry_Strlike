@@ -1,46 +1,297 @@
-window.initPlayer = () => ({
-    x: window.GAME_WIDTH / 2, y: window.GAME_HEIGHT - 100, speed: 2.2, radius: 25, hp: 100, maxHp: 100, exp: 0, maxExp: 200, level: 1, damage: 10,
-    attackCount: 1, baseAttackCooldown: 30, attackCooldown: 0, attackQueue: 0, burstTimer: 0,
-    isParrying: false, parryTimer: 0, parryCooldown: 0, autoParryTimer: 0, isDashing: false, dashTimer: 0, dashCooldown: 0, dashDir: {x: 1, y: 0},
-    hasSkill: false, skillCooldown: 0, maxSkillCooldown: 600,
-    isStunned: false, stunTimer: 0, isPulled: false, pullTimer: 0, pullTarget: null,
-    lifesteal: 0, skillDamageMult: 2, weaponType: 'normal', dashDamage: false, parryHeal: false, waveChance: false, augments: []
-});
-window.player = window.initPlayer();
+window.startGame = function() { 
+    window.player = window.initPlayer(); 
+    window.bossLevel = 1; 
+    document.querySelectorAll('#opening-screen').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('#btn-giveup').forEach(el => el.style.display = 'block');
+    window.isPaused = false; 
+    window.spawnBosses(); 
+    window.updateUI(); 
+    requestAnimationFrame(window.update); 
+};
+window.showTutorial = function() { document.querySelectorAll('#tutorial-modal').forEach(el => el.classList.remove('hidden')); };
+window.closeTutorial = function() { document.querySelectorAll('#tutorial-modal').forEach(el => el.classList.add('hidden')); };
 
-window.spawnBosses = function() {
-    window.bosses.forEach(b => { b.el.remove(); b.uiEl.remove(); }); window.bosses = [];
-    for(let i = 0; i < window.bossLevel; i++) {
-        const el = document.createElement('div'); el.className = 'character idle'; 
-        el.style.display = 'flex'; el.style.position = 'absolute'; el.style.transform = 'translate(-50%, -50%)'; el.style.zIndex = '10'; el.style.justifyContent = 'center'; el.style.alignItems = 'center'; el.style.borderRadius = '50%'; el.style.width = '100px'; el.style.height = '100px';
-        let eyeHtml = `<div class="ig-eyes"><div class="ig-eye boss-eye"><div class="ig-pupil"></div></div><div class="ig-eye boss-eye"><div class="ig-pupil"></div></div></div>`;
-        let bossNameStr = ""; let nameColor = "#fff";
+window.showLeaderboard = function() { 
+    const nocacheUrl = "https://docs.google.com/spreadsheets/d/190rTIf_nsxscNZ3qhOHnHQgTBXnRvxGke9gcQ7CVyuQ/htmlembed?widget=false&headers=false&chrome=false&t=" + new Date().getTime();
+    document.querySelectorAll('.leaderboard-iframe').forEach(iframe => iframe.src = nocacheUrl);
+    document.querySelectorAll('#leaderboard-modal').forEach(el => el.classList.remove('hidden')); 
+};
+window.closeLeaderboard = function() { document.querySelectorAll('#leaderboard-modal').forEach(el => el.classList.add('hidden')); };
 
-        if (window.bossLevel >= 9) { el.classList.add('boss-cosmic'); el.innerHTML = '<div class="boss-core"></div>' + eyeHtml + '<div class="ig-boss-weapon" style="background:linear-gradient(to right, #fff, #8e44ad); width:80px; height:15px; box-shadow: 0 0 15px #8e44ad;"></div>'; bossNameStr = `Lv.${window.bossLevel} Cosmic Being`; nameColor = "#9b59b6"; } 
-        else if (window.bossLevel >= 7) { el.classList.add('boss-mecha'); el.innerHTML = '<div class="boss-visor"></div><div class="ig-boss-weapon" style="background:#00ffff; width:60px; height:8px; box-shadow:0 0 10px #00ffff;"></div>'; bossNameStr = `Lv.${window.bossLevel} Mecha Boss`; nameColor = "#00ffff"; } 
-        else if (window.bossLevel >= 5) { el.style.border = '4px solid #f1c40f'; el.style.backgroundColor = '#8e44ad'; el.innerHTML = '<div class="boss-horns"><div class="boss-horn" style="transform:rotate(-20deg);"></div><div class="boss-horn" style="transform:rotate(20deg);"></div></div><div class="boss-crown"></div>' + eyeHtml + '<div class="ig-boss-weapon" style="background:linear-gradient(to right, #8e44ad, #2c3e50); width:70px; height:18px;"></div>'; bossNameStr = `Lv.${window.bossLevel} Demon Knight`; nameColor = "#f1c40f"; } 
-        else if (window.bossLevel >= 3) { el.style.border = '4px solid #95a5a6'; el.style.backgroundColor = '#c0392b'; el.innerHTML = '<div class="boss-helmet"></div>' + eyeHtml + '<div class="ig-boss-weapon" style="background:#2c3e50; width:55px;"></div>'; bossNameStr = `Lv.${window.bossLevel} Armored Orc`; nameColor = "#e74c3c"; } 
-        else { el.classList.add('boss-slime'); el.innerHTML = eyeHtml + '<div class="ig-boss-weapon" style="background:#27ae60; width:40px; height:10px;"></div>'; bossNameStr = `Lv.${window.bossLevel} Mutant Slime`; nameColor = "#2ecc71"; }
-
-        const uiEl = document.createElement('div'); uiEl.style.position = 'absolute'; uiEl.style.width = '100px'; uiEl.style.transform = 'translate(-50%, -15px)'; uiEl.style.textAlign = 'center'; uiEl.style.zIndex = '11';
-        const nameEl = document.createElement('div'); nameEl.innerText = bossNameStr; nameEl.style.color = nameColor; nameEl.style.fontSize = '12px'; nameEl.style.fontWeight = 'bold'; nameEl.style.marginBottom = '2px'; nameEl.style.textShadow = '1px 1px 2px #000';
-        const hpBg = document.createElement('div'); hpBg.style.width = '100%'; hpBg.style.height = '8px'; hpBg.style.backgroundColor = 'rgba(0,0,0,0.5)'; hpBg.style.border = '1px solid #000';
-        const hpFill = document.createElement('div'); hpFill.style.width = '100%'; hpFill.style.height = '100%'; hpFill.style.backgroundColor = '#e74c3c'; hpFill.style.transition = 'width 0.1s';
-        hpBg.appendChild(hpFill); uiEl.appendChild(nameEl); uiEl.appendChild(hpBg); window.container.appendChild(el); window.container.appendChild(uiEl);
-
-        let maxHp = 50 + (window.bossLevel * 100); let spacing = window.GAME_WIDTH / (window.bossLevel + 1);
-        window.bosses.push({ x: spacing * (i + 1), y: 100 + (Math.random() * 80), radius: 50, hp: maxHp, maxHp: maxHp, state: 'idle', stateTimer: Math.floor(Math.random() * 40), vx: 1.2 * (i % 2 === 0 ? 1 : -1), vy: 0, dashSpeed: 12 + (window.bossLevel * 0.5), dashHitDelay: 0, freezeStack: 0, isFrozen: false, freezeTimer: 0, el: el, uiEl: uiEl, hpFill: hpFill });
-    }
-    const topBossName = document.getElementById('boss-name'); if(topBossName) topBossName.innerText = `WAVE ${window.bossLevel} (적 ${window.bossLevel}마리)`;
+window.giveUpGame = function() {
+    if (window.isPaused) return;
+    if (confirm("게임을 포기하시겠습니까?\n(현재 도달한 레벨로 리더보드에 랭킹을 등록할 수 있습니다.)")) window.player.hp = 0; 
 };
 
-window.updateUI = function() {
-    const pHP = document.getElementById('player-hp'); const pEXP = document.getElementById('player-exp'); const pLVL = document.getElementById('player-level');
-    if(pHP) pHP.style.width = (Math.max(0, window.player.hp) / window.player.maxHp * 100) + '%'; 
-    if(pEXP) pEXP.style.width = (window.player.exp / window.player.maxExp * 100) + '%'; 
-    if(pLVL) pLVL.innerText = window.player.level;
+window.returnToMenu = function() {
+    window.location.reload();
+};
+
+window.submitScore = function() {
+    const nicknameInput = document.getElementById('nickname-input');
+    if(!nicknameInput) return;
+    const nickname = nicknameInput.value.trim();
+    if (!nickname) { alert("닉네임을 입력해주세요!"); return; }
+
+    let bestLevel = parseInt(localStorage.getItem('parry_best_level')) || 0;
+    if (window.player.level <= bestLevel) {
+        alert(`기존 최고 기록(Lv.${bestLevel})보다 높아야 갱신이 가능합니다!\n더 높은 레벨에 도달해주세요.`);
+        return;
+    }
+
+    const submitBtn = document.getElementById('btn-submit-score');
+    submitBtn.innerHTML = '전송 중...'; submitBtn.disabled = true;
+
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}. ${now.getMonth()+1}. ${now.getDate()}. ${now.getHours()}:${now.getMinutes() < 10 ? '0' : ''}${now.getMinutes()}`;
+
+    const formUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSdUNFntaS4Uc79QYWnjTPDOwDV82SZlLKvucKeQ9l8l6ybHXQ/formResponse';
+    const formData = new FormData();
+    formData.append('entry.225873384', nickname);
+    formData.append('entry.1187942698', window.player.level);
+    formData.append('entry.1748204136', dateStr);
+
+    fetch(formUrl, { method: 'POST', mode: 'no-cors', body: formData })
+        .then(() => { 
+            submitBtn.innerHTML = '✅ 갱신 완료!'; submitBtn.style.background = '#34495e'; nicknameInput.disabled = true; 
+            localStorage.setItem('parry_best_level', window.player.level); 
+        })
+        .catch(e => { submitBtn.innerHTML = '❌ 전송 실패 (재시도)'; submitBtn.disabled = false; });
+};
+
+window.restartGame = function() {
+    window.bossLevel = 1; 
+    window.player = window.initPlayer(); 
+    if(window.playerSwordEl) window.playerSwordEl.style.background = '#bdc3c7'; 
+    if(window.skillStatusEl) window.skillStatusEl.classList.add('hidden');
+    if(document.getElementById('btn-skill')) document.getElementById('btn-skill').classList.add('hidden');
+    if(document.getElementById('mob-skill')) document.getElementById('mob-skill').classList.add('hidden');
+
+    window.projectiles.forEach(p => p.el.remove()); window.projectiles = []; window.blasters.forEach(b => b.el.remove()); window.blasters = [];
+    document.querySelectorAll('#game-over-modal').forEach(el => el.classList.add('hidden'));
+
+    window.playerEl.classList.remove('player-grabbed', 'parrying', 'parry-deflect', 'parry-cd', 'hit-flash', 'player-stunned'); 
     
-    let totalHp = 0; let totalMaxHp = 0; 
-    window.bosses.forEach(b => { totalHp += b.hp; totalMaxHp += b.maxHp; b.hpFill.style.width = (Math.max(0, b.hp) / b.maxHp * 100) + '%'; });
-    const bossHpTop = document.getElementById('boss-hp'); if(bossHpTop && totalMaxHp > 0) bossHpTop.style.width = (Math.max(0, totalHp) / totalMaxHp * 100) + '%';
+    let stunInd = document.getElementById('stun-indicator'); if(stunInd) stunInd.remove();
+    document.querySelectorAll('#btn-giveup').forEach(el => el.style.display = 'block');
+    
+    window.spawnBosses(); window.updateUI(); window.renderAugments(); 
+    window.isPaused = false; requestAnimationFrame(window.update);
+};
+
+window.bossLogic = function() {
+    window.bosses.forEach(boss => {
+        if (boss.isFrozen) { boss.freezeTimer--; if (boss.freezeTimer <= 0) { boss.isFrozen = false; boss.el.classList.remove('frozen-boss'); } boss.el.style.left = boss.x + 'px'; boss.el.style.top = boss.y + 'px'; boss.uiEl.style.left = boss.x + 'px'; boss.uiEl.style.top = (boss.y - boss.radius - 15) + 'px'; return; }
+        if (boss.dashHitDelay > 0) boss.dashHitDelay--;
+
+        if (boss.state === 'idle') {
+            boss.x += boss.vx; if (boss.x < boss.radius + 50 || boss.x > window.GAME_WIDTH - boss.radius - 50) boss.vx *= -1; boss.stateTimer++;
+            if (boss.stateTimer > 120) {
+                const rand = Math.random(); boss.stateTimer = 0;
+                if (window.bossLevel < 2) { if (rand < 0.2) boss.state = 'pattern1'; else if (rand < 0.4) boss.state = 'pattern2'; else if (rand < 0.6) boss.state = 'pattern3'; else if (rand < 0.8) boss.state = 'pattern6'; else boss.state = 'pattern5'; } 
+                else if (window.bossLevel < 4) { if (rand < 0.15) boss.state = 'pattern1'; else if (rand < 0.3) boss.state = 'pattern5'; else if (rand < 0.45) boss.state = 'pattern6'; else if (rand < 0.6) boss.state = 'pattern8'; else if (rand < 0.75) boss.state = 'pattern9'; else boss.state = 'pattern3'; } 
+                else { if (rand < 0.1) boss.state = 'pattern1'; else if (rand < 0.2) boss.state = 'pattern2'; else if (rand < 0.35) boss.state = 'pattern5'; else if (rand < 0.5) boss.state = 'pattern6'; else if (rand < 0.65) boss.state = 'pattern8'; else if (rand < 0.8) boss.state = 'pattern9'; else boss.state = 'pattern7'; }
+            }
+        } else {
+            boss.stateTimer++; const angleToPlayer = Math.atan2(window.player.y - boss.y, window.player.x - boss.x);
+            if (boss.stateTimer === 1 && boss.state !== 'pattern7' && boss.state !== 'pattern8') boss.el.classList.add('eye-glow');
+
+            if (boss.state === 'pattern1') { if(boss.stateTimer === 10) { window.playSound('swing'); boss.el.classList.remove('eye-glow'); boss.el.classList.add('boss-attack-anim'); window.spawnProjectile(boss.x, boss.y, angleToPlayer, 10, 15, true, 100, false, false, boss); } if(boss.stateTimer > 40) window.resetBossState(boss); }
+            else if (boss.state === 'pattern2') { if(boss.stateTimer === 1) boss.el.classList.add('boss-telegraph'); if(boss.stateTimer === 100) { window.playSound('swing'); boss.el.classList.remove('eye-glow', 'boss-telegraph'); boss.el.classList.add('boss-attack-anim'); window.spawnProjectile(boss.x, boss.y, angleToPlayer, 6, 20, true, 180, true, false, boss); } if(boss.stateTimer > 130) window.resetBossState(boss); }
+            else if (boss.state === 'pattern3') { if(boss.stateTimer === 20 || boss.stateTimer === 40 || boss.stateTimer === 60) { if(boss.stateTimer === 20) boss.el.classList.remove('eye-glow'); window.playSound('swing'); boss.el.classList.add('boss-attack-anim'); window.spawnProjectile(boss.x, boss.y, angleToPlayer, 6, 10, true, 100, false, false, boss); setTimeout(() => boss.el.classList.remove('boss-attack-anim'), 100); } if(boss.stateTimer > 100) window.resetBossState(boss); }
+            else if (boss.state === 'pattern4') { if(boss.stateTimer === 30) { window.playSound('swing'); boss.el.classList.remove('eye-glow'); boss.el.classList.add('boss-attack-anim'); window.spawnProjectile(boss.x, boss.y, angleToPlayer, 7, 20, true, 100, false, false, boss); } if(boss.stateTimer > 70) window.resetBossState(boss); }
+            else if (boss.state === 'pattern5') { 
+                if (boss.stateTimer === 1) { boss.el.style.backgroundColor = '#f1c40f'; boss.el.classList.add('boss-telegraph', 'boss-shake'); let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'dash-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 10px red'; boss.el.appendChild(warning); }
+                if (boss.stateTimer === 60) { boss.el.classList.remove('eye-glow', 'boss-telegraph', 'boss-shake'); let warn = boss.el.querySelector('.dash-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-dashing'); boss.el.style.backgroundColor = '#e67e22'; boss.el.style.transform = 'translate(-50%, -50%) scale(1.1)'; boss.el.style.transition = 'none'; boss.vx = Math.cos(angleToPlayer) * boss.dashSpeed; boss.vy = Math.sin(angleToPlayer) * boss.dashSpeed; }
+                if (boss.stateTimer > 60 && boss.stateTimer < 90) {
+                    boss.x += boss.vx; boss.y += boss.vy;
+                    if (window.getDistance(boss.x, boss.y, window.player.x, window.player.y) < window.player.radius + boss.radius) {
+                        if (window.player.isDashing) { } 
+                        else if (window.player.isParrying || window.player.autoParryTimer > 0) { 
+                            window.createParryEffect(window.player.x, window.player.y); window.spawnDamageText(window.player.x, window.player.y - 40, 'PARRY!', 'crit');
+                            window.player.autoParryTimer = 6; window.playSound('parryed'); window.player.isParrying = false; window.playerEl.classList.remove('parrying', 'parry-cd'); window.playerEl.classList.add('parry-deflect'); setTimeout(() => window.playerEl.classList.remove('parry-deflect'), 200);
+                            if (window.player.parryHeal) { window.player.hp = Math.min(window.player.maxHp, window.player.hp + 20); window.spawnDamageText(window.player.x, window.player.y, 20, 'heal'); }
+                            window.player.parryCooldown = 0; if(window.parryStatusEl) { window.parryStatusEl.innerText = "돌진 저지 성공! (기절)"; window.parryStatusEl.style.color = "#2ecc71"; }
+                            boss.hp -= 100; window.gainExp(50); boss.stateTimer = 90; window.bossHitEffect(boss, boss.x, boss.y, 100, true); window.checkBossDeath(boss);
+                        } else { window.takeDamage(30); boss.stateTimer = 90; }
+                    }
+                }
+                if (boss.stateTimer >= 90) { boss.el.classList.remove('boss-dashing'); window.resetBossState(boss); }
+            }
+            else if (boss.state === 'pattern6') { 
+                if (boss.stateTimer === 1) { boss.el.style.backgroundColor = '#8e44ad'; boss.el.classList.add('boss-telegraph', 'boss-shake'); let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'grab-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 15px #8e44ad'; boss.el.appendChild(warning); }
+                if (boss.stateTimer === 60) { window.playSound('swing'); boss.el.style.backgroundColor = '#c0392b'; boss.el.classList.remove('boss-telegraph', 'boss-shake'); let warn = boss.el.querySelector('.grab-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); window.spawnProjectile(boss.x, boss.y, angleToPlayer, 10, 0, true, 120, false, true, boss, false, false, 'slash-purple'); }
+                if (boss.stateTimer > 100) window.resetBossState(boss);
+            }
+            else if (boss.state === 'pattern9') { 
+                if (boss.stateTimer === 1) { boss.el.style.backgroundColor = '#7f8c8d'; boss.el.classList.add('boss-telegraph'); let warning = document.createElement('div'); warning.innerText = '⛓️'; warning.className = 'chain-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '30px'; warning.style.textShadow = '0 0 15px #7f8c8d'; boss.el.appendChild(warning); }
+                if (boss.stateTimer === 50) { window.playSound('swing'); boss.el.style.backgroundColor = '#bdc3c7'; boss.el.classList.remove('boss-telegraph'); let warn = boss.el.querySelector('.chain-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); window.spawnProjectile(boss.x, boss.y, angleToPlayer, 12, 5, true, 40, false, false, boss, false, false, 'slash-chain'); }
+                if (boss.stateTimer > 90) window.resetBossState(boss);
+            }
+            else if (boss.state === 'pattern8') { 
+                if (boss.stateTimer === 1) { boss.el.style.backgroundColor = '#2ecc71'; boss.el.classList.add('boss-telegraph'); let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'grab-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 15px #2ecc71'; boss.el.appendChild(warning); }
+                if (boss.stateTimer >= 60 && boss.stateTimer <= 80) { if (boss.stateTimer === 60) { boss.el.classList.remove('boss-telegraph'); let warn = boss.el.querySelector('.grab-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); } if (boss.stateTimer % 2 === 0) { window.playSound('swing'); window.spawnProjectile(boss.x, boss.y, angleToPlayer, 15, 5, true, 40, false, false, boss, false, false, 'slash-green'); } }
+                if (boss.stateTimer > 100) window.resetBossState(boss);
+            }
+            else if (boss.state === 'pattern7') { 
+                if (boss.stateTimer === 1) { boss.el.style.backgroundColor = '#000'; boss.el.style.boxShadow = '0 0 20px #f00'; }
+                boss.x += Math.cos(angleToPlayer) * 1.5; boss.y += Math.sin(angleToPlayer) * 1.5; const timings = [30, 70, 100, 150, 180, 230, 260];
+                if (timings.includes(boss.stateTimer)) { let orbitAngle = (boss.stateTimer * 0.1) + Math.random(); let bx = window.player.x + Math.cos(orbitAngle) * 250; let by = window.player.y + Math.sin(orbitAngle) * 250; window.createBlaster(bx, by, Math.atan2(window.player.y - by, window.player.x - bx), boss); }
+                if (boss.stateTimer > 300) { window.resetBossState(boss); }
+            }
+        }
+        boss.x = Math.max(boss.radius, Math.min(window.GAME_WIDTH - boss.radius, boss.x)); boss.y = Math.max(boss.radius, Math.min(window.GAME_HEIGHT - boss.radius, boss.y)); boss.el.style.left = boss.x + 'px'; boss.el.style.top = boss.y + 'px'; boss.uiEl.style.left = boss.x + 'px'; boss.uiEl.style.top = (boss.y - boss.radius - 15) + 'px';
+    });
+};
+
+window.resetBossState = function(boss) {
+    boss.state = 'idle'; boss.stateTimer = 0; boss.vy = 0; boss.vx = 1.2;
+    boss.el.classList.remove('boss-attack-anim', 'boss-telegraph', 'boss-dashing', 'eye-glow', 'boss-shake'); boss.el.style.backgroundColor = ''; boss.el.style.boxShadow = 'none'; boss.el.style.transform = 'translate(-50%, -50%) scale(1)'; boss.el.style.transition = 'none';
+    let warn = boss.el.querySelector('.dash-warning'); if(warn) warn.remove(); let warn2 = boss.el.querySelector('.grab-warning'); if(warn2) warn2.remove(); let warn3 = boss.el.querySelector('.chain-warning'); if(warn3) warn3.remove();
+};
+
+window.update = function() {
+    if (window.isPaused) return;
+
+    if (window.isAttacking) window.doAttack();
+    if (window.player.autoParryTimer > 0) window.player.autoParryTimer--;
+    if (window.player.dashCooldown > 0) window.player.dashCooldown--;
+    if(window.dashStatusEl) {
+        if (window.player.dashCooldown <= 0) { window.dashStatusEl.innerText = "[Shift] 대시 준비 완료"; window.dashStatusEl.style.color = "#2ecc71"; } else { window.dashStatusEl.innerText = `대시 쿨타임: ${(window.player.dashCooldown/60).toFixed(1)}초`; window.dashStatusEl.style.color = "#7f8c8d"; }
+    }
+
+    if (window.player.isStunned) {
+        window.player.stunTimer--; 
+        if(window.parryStatusEl) { window.parryStatusEl.innerText = `기절됨! (${Math.ceil(window.player.stunTimer/60)}초)`; window.parryStatusEl.style.color = "red"; }
+        let stunInd = document.getElementById('stun-indicator');
+        if (!stunInd) { stunInd = document.createElement('div'); stunInd.id = 'stun-indicator'; stunInd.className = 'stun-indicator'; stunInd.innerText = '기절!'; window.playerEl.appendChild(stunInd); window.playerEl.classList.add('player-stunned'); }
+        if (window.player.stunTimer <= 0) { window.player.isStunned = false; if (stunInd) stunInd.remove(); window.playerEl.classList.remove('player-stunned'); }
+    } else if (window.player.isPulled) {
+        window.player.pullTimer--;
+        if (window.player.pullTarget && window.player.pullTarget.hp > 0) { let dx = window.player.pullTarget.x - window.player.x; let dy = window.player.pullTarget.y - window.player.y; let dist = Math.hypot(dx, dy); if (dist > 30) { window.player.x += (dx / dist) * 10; window.player.y += (dy / dist) * 10; } }
+        if(window.parryStatusEl) { window.parryStatusEl.innerText = "사슬에 끌려가는 중!!"; window.parryStatusEl.style.color = "orange"; }
+        if (window.player.pullTimer <= 0) window.player.isPulled = false;
+    } else if (window.player.isDashing) {
+        window.player.x += window.player.dashDir.x * 15; window.player.y += window.player.dashDir.y * 15; window.player.x = Math.max(window.player.radius, Math.min(window.GAME_WIDTH - window.player.radius, window.player.x)); window.player.y = Math.max(window.player.radius, Math.min(window.GAME_HEIGHT - window.player.radius, window.player.y)); window.player.dashTimer--; if (window.player.dashTimer % 2 === 0) window.createDashShadow();
+        if (window.player.dashDamage) { window.bosses.forEach(b => { if (window.getDistance(window.player.x, window.player.y, b.x, b.y) < window.player.radius + b.radius + 30) { if (b.dashHitDelay <= 0) { b.hp -= window.player.damage; window.gainExp(window.player.damage); window.bossHitEffect(b, b.x, b.y, window.player.damage, true); window.checkBossDeath(b); b.dashHitDelay = 30; } } }); }
+        if (window.player.dashTimer <= 0) window.player.isDashing = false;
+    } else if (!window.player.isParrying) {
+        if (window.joystickDelta.x !== 0 || window.joystickDelta.y !== 0) { let nextX = window.player.x + window.joystickDelta.x * window.player.speed; let nextY = window.player.y + window.joystickDelta.y * window.player.speed; window.player.x = Math.max(window.player.radius, Math.min(window.GAME_WIDTH - window.player.radius, nextX)); window.player.y = Math.max(window.player.radius, Math.min(window.GAME_HEIGHT - window.player.radius, nextY)); } 
+        else { if (window.keys.w && window.player.y > window.player.radius) window.player.y -= window.player.speed; if (window.keys.s && window.player.y < window.GAME_HEIGHT - window.player.radius) window.player.y += window.player.speed; if (window.keys.a && window.player.x > window.player.radius) window.player.x -= window.player.speed; if (window.keys.d && window.player.x < window.GAME_WIDTH - window.player.radius) window.player.x += window.player.speed; }
+    }
+
+    window.playerEl.style.left = window.player.x + 'px'; window.playerEl.style.top = window.player.y + 'px';
+
+    if (window.player.attackQueue > 0 && !window.player.isStunned && !window.player.isPulled) {
+        window.player.burstTimer--;
+        if (window.player.burstTimer <= 0) {
+            window.playSound('swing');
+            let target = window.isMobileEnv ? window.getClosestBossTo(window.player.x, window.player.y) : window.getClosestBossTo(window.mousePos.x, window.mousePos.y); let tx = target ? target.x : window.player.x; let ty = target ? target.y : window.player.y - 10; let baseAngle = Math.atan2(ty - window.player.y, tx - window.player.x);
+            if(window.playerSwordEl) { window.playerSwordEl.style.transform = `rotate(${baseAngle}rad)`; setTimeout(() => { window.playerSwordEl.style.transform = 'rotate(0deg)'; }, 200); }
+            if (window.player.waveChance && Math.random() < 0.3) { window.spawnProjectile(window.player.x, window.player.y, baseAngle - 0.3, 8, window.player.damage, false, 70); window.spawnProjectile(window.player.x, window.player.y, baseAngle, 8, window.player.damage, false, 70); window.spawnProjectile(window.player.x, window.player.y, baseAngle + 0.3, 8, window.player.damage, false, 70); } 
+            else { window.spawnProjectile(window.player.x, window.player.y, baseAngle, 8, window.player.damage, false, 70); }
+            window.player.attackQueue--; window.player.burstTimer = 8;
+        }
+    }
+
+    if(window.player.attackCooldown > 0) window.player.attackCooldown--;
+
+    if (window.player.isParrying) {
+        window.player.parryTimer--;
+        if (window.player.parryTimer <= 0) { window.player.isParrying = false; window.playerEl.classList.remove('parrying'); window.playerEl.classList.add('parry-cd'); window.player.parryCooldown = 300; }
+    } else if (!window.player.isStunned && !window.player.isPulled) {
+        if (window.player.parryCooldown > 0) {
+            window.player.parryCooldown--; let secondsLeft = Math.ceil(window.player.parryCooldown / 60);
+            if(window.parryStatusEl) { window.parryStatusEl.innerText = `패링 쿨타임: ${secondsLeft}초`; window.parryStatusEl.style.color = "#e74c3c"; }
+            if(window.floatingCdEl) { window.floatingCdEl.innerText = `${secondsLeft}초`; }
+            if (window.player.parryCooldown <= 0) { 
+                if(window.parryStatusEl) { window.parryStatusEl.innerText = "패링 준비 완료"; window.parryStatusEl.style.color = "#3498db"; }
+                if(window.floatingCdEl) { window.floatingCdEl.innerText = ""; } 
+                window.playerEl.classList.remove('parry-cd'); 
+            }
+        }
+    }
+
+    if (window.player.hasSkill && window.skillStatusEl) {
+        if (window.player.skillCooldown > 0) { window.player.skillCooldown--; window.skillStatusEl.innerText = `회전베기: ${Math.ceil(window.player.skillCooldown / 60)}초`; window.skillStatusEl.style.color = "#e74c3c"; } 
+        else { window.skillStatusEl.innerText = "회전베기: 준비 완료!"; window.skillStatusEl.style.color = "#f1c40f"; }
+    }
+
+    window.bossLogic();
+
+    for (let i = window.projectiles.length - 1; i >= 0; i--) {
+        let p = window.projectiles[i]; p.x += Math.cos(p.angle) * p.speed; p.y += Math.sin(p.angle) * p.speed; p.el.style.left = p.x + 'px'; p.el.style.top = p.y + 'px'; p.el.style.transform = `translate(-50%, -50%) rotate(${p.angle}rad)`; p.timer++;
+
+        if (!p.isBoss && window.player.weaponType === 'fire' && p.timer % 2 === 0) { window.spawnFireTrail(p.x, p.y); }
+        if (p.x < -100 || p.x > window.GAME_WIDTH + 100 || p.y < -100 || p.y > window.GAME_HEIGHT + 100) { p.el.remove(); window.projectiles.splice(i, 1); continue; }
+
+        if (p.isBoss) {
+            if (window.getDistance(p.x, p.y, window.player.x, window.player.y) < window.player.radius + p.radius) {
+                if (window.player.isDashing) { } 
+                else if ((window.player.isParrying || window.player.autoParryTimer > 0) && !p.isUnparryable) {
+                    let isAutoParry = (window.player.autoParryTimer > 0 && !window.player.isParrying);
+                    if (!isAutoParry) { if (window.player.parryHeal) { window.player.hp = Math.min(window.player.maxHp, window.player.hp + 20); window.spawnDamageText(window.player.x, window.player.y, 20, 'heal'); } }
+
+                    window.createParryEffect(window.player.x, window.player.y); window.spawnDamageText(window.player.x, window.player.y - 40, 'PARRY!', 'crit');
+                    window.player.autoParryTimer = 6; window.playSound('parryed'); window.player.isParrying = false; 
+                    window.playerEl.classList.remove('parrying', 'parry-cd'); window.playerEl.classList.add('parry-deflect'); setTimeout(() => window.playerEl.classList.remove('parry-deflect'), 200);
+                    
+                    window.player.parryCooldown = 0; if(window.floatingCdEl) window.floatingCdEl.innerText = ""; if(window.parryStatusEl) window.parryStatusEl.style.color = "#2ecc71";
+                    
+                    if (p.el.classList.contains('slash-purple')) {
+                        if(window.parryStatusEl) window.parryStatusEl.innerText = "스턴 공격 패링 성공!";
+                        if(p.owner) { p.owner.hp -= 20; window.bossHitEffect(p.owner, p.owner.x, p.owner.y, 20, true); window.checkBossDeath(p.owner); } p.el.remove(); window.projectiles.splice(i, 1); 
+                    } else if (p.el.classList.contains('slash-chain')) {
+                        if(window.parryStatusEl) window.parryStatusEl.innerText = "사슬 튕겨내기 성공!";
+                        if(p.owner) { p.owner.hp -= 20; window.bossHitEffect(p.owner, p.owner.x, p.owner.y, 20, true); window.checkBossDeath(p.owner); } p.el.remove(); window.projectiles.splice(i, 1); 
+                    } else {
+                        if(window.parryStatusEl) window.parryStatusEl.innerText = "패링 반사 성공!";
+                        p.isBoss = false; p.el.classList.remove('boss-slash', 'heavy-slash', 'laser-slash', 'unparryable-attack', 'slash-green');
+                        let target = window.isMobileEnv ? window.getClosestBossTo(p.x, p.y) : window.getClosestBossTo(window.mousePos.x, window.mousePos.y); 
+                        p.angle = target ? Math.atan2(target.y - p.y, target.x - p.x) : p.angle + Math.PI; p.speed *= 1.5; p.damage *= 2;
+                    }
+                } else {
+                    let isChain = p.el.classList.contains('slash-chain');
+                    if (p.isGrab) {
+                        window.player.isStunned = true; window.player.stunTimer = 120; window.takeDamage(20); 
+                        p.el.remove(); window.projectiles.splice(i, 1);
+                    } else if (isChain) {
+                        window.player.isPulled = true; window.player.pullTimer = 40; window.player.pullTarget = p.owner; window.takeDamage(5); p.el.remove(); window.projectiles.splice(i, 1);
+                    } else {
+                        window.takeDamage(p.damage); p.el.remove(); window.projectiles.splice(i, 1); 
+                    }
+                }
+            }
+        } else {
+            for(let j = window.bosses.length - 1; j >= 0; j--) {
+                let b = window.bosses[j];
+                if (window.getDistance(p.x, p.y, b.x, b.y) < b.radius + p.radius) {
+                    b.hp -= p.damage; window.gainExp(p.damage);
+                    if (window.player.lifesteal > 0 && window.player.hp < window.player.maxHp) window.player.hp = Math.min(window.player.maxHp, window.player.hp + window.player.lifesteal);
+                    window.updateUI(); window.bossHitEffect(b, p.x, p.y, p.damage, false);
+                    if (window.player.weaponType === 'ice') { b.freezeStack++; window.spawnParticles(p.x, p.y, '#00ffff', 5); if (b.freezeStack >= 4) { b.isFrozen = true; b.freezeTimer = 180; b.freezeStack = 0; b.el.classList.add('frozen-boss'); window.spawnDamageText(b.x, b.y, 'FREEZE!', 'crit'); } } else if (window.player.weaponType === 'fire') { window.spawnParticles(p.x, p.y, '#e67e22', 15); b.hp -= 5; window.spawnDamageText(b.x, b.y + 20, 5, 'fire'); }
+                    p.el.remove(); window.projectiles.splice(i, 1); window.checkBossDeath(b); break;
+                }
+            }
+        }
+    }
+
+    if (window.player.hp <= 0) {
+        window.playSound('dead'); 
+        const finalScore = document.getElementById('final-score');
+        if(finalScore) finalScore.innerText = `현재 도달: Boss Wave ${window.bossLevel} / 플레이어 Lv. ${window.player.level}`;
+        
+        document.querySelectorAll('#game-over-modal').forEach(el => el.classList.remove('hidden')); 
+        window.isPaused = true; 
+        document.querySelectorAll('#btn-giveup').forEach(el => el.style.display = 'none'); 
+        
+        // 버튼 텍스트 초기화
+        const submitBtn = document.getElementById('btn-submit-score');
+        if (submitBtn) { submitBtn.innerHTML = '기록 갱신하기'; submitBtn.disabled = false; submitBtn.style.background = '#27ae60'; }
+        const nickInput = document.getElementById('nickname-input');
+        if (nickInput) { nickInput.disabled = false; }
+        return;
+    }
+    
+    requestAnimationFrame(window.update);
 };
