@@ -241,4 +241,128 @@ window.update = function() {
     } else if (window.player.isPulled) {
         window.player.pullTimer--;
         if (window.player.pullTarget && window.player.pullTarget.hp > 0) { let dx = window.player.pullTarget.x - window.player.x; let dy = window.player.pullTarget.y - window.player.y; let dist = Math.hypot(dx, dy); if (dist > 30) { window.player.x += (dx / dist) * 10; window.player.y += (dy / dist) * 10; } }
-        if(window.parryStatusEl) { window.parryStatusEl.innerText = "사슬에 끌려가는 중!!"; window.parryStatus
+        if(window.parryStatusEl) { window.parryStatusEl.innerText = "사슬에 끌려가는 중!!"; window.parryStatusEl.style.color = "orange"; }
+        if (window.player.pullTimer <= 0) window.player.isPulled = false;
+    } else if (window.player.isDashing) {
+        window.player.x += window.player.dashDir.x * 15; window.player.y += window.player.dashDir.y * 15; window.player.x = Math.max(window.player.radius, Math.min(window.GAME_WIDTH - window.player.radius, window.player.x)); window.player.y = Math.max(window.player.radius, Math.min(window.GAME_HEIGHT - window.player.radius, window.player.y)); window.player.dashTimer--; if (window.player.dashTimer % 2 === 0) window.createDashShadow();
+        if (window.player.dashDamage) { window.bosses.forEach(b => { if (window.getDistance(window.player.x, window.player.y, b.x, b.y) < window.player.radius + b.radius + 30) { if (b.dashHitDelay <= 0) { b.hp -= window.player.damage; window.gainExp(window.player.damage); window.bossHitEffect(b, b.x, b.y, window.player.damage, true); window.checkBossDeath(b); b.dashHitDelay = 30; } } }); }
+        if (window.player.dashTimer <= 0) window.player.isDashing = false;
+    } else if (!window.player.isParrying) {
+        if (window.joystickDelta.x !== 0 || window.joystickDelta.y !== 0) { let nextX = window.player.x + window.joystickDelta.x * window.player.speed; let nextY = window.player.y + window.joystickDelta.y * window.player.speed; window.player.x = Math.max(window.player.radius, Math.min(window.GAME_WIDTH - window.player.radius, nextX)); window.player.y = Math.max(window.player.radius, Math.min(window.GAME_HEIGHT - window.player.radius, nextY)); } 
+        else { if (window.keys.w && window.player.y > window.player.radius) window.player.y -= window.player.speed; if (window.keys.s && window.player.y < window.GAME_HEIGHT - window.player.radius) window.player.y += window.player.speed; if (window.keys.a && window.player.x > window.player.radius) window.player.x -= window.player.speed; if (window.keys.d && window.player.x < window.GAME_WIDTH - window.player.radius) window.player.x += window.player.speed; }
+    }
+
+    window.playerEl.style.left = window.player.x + 'px'; window.playerEl.style.top = window.player.y + 'px';
+
+    if (window.player.attackQueue > 0 && !window.player.isStunned && !window.player.isPulled) {
+        window.player.burstTimer--;
+        if (window.player.burstTimer <= 0) {
+            window.playSound('swing');
+            let target = window.isMobileEnv ? window.getClosestBossTo(window.player.x, window.player.y) : window.getClosestBossTo(window.mousePos.x, window.mousePos.y); let tx = target ? target.x : window.player.x; let ty = target ? target.y : window.player.y - 10; let baseAngle = Math.atan2(ty - window.player.y, tx - window.player.x);
+            if(window.playerSwordEl) { window.playerSwordEl.style.transform = `rotate(${baseAngle}rad)`; setTimeout(() => { window.playerSwordEl.style.transform = 'rotate(0deg)'; }, 200); }
+            if (window.player.waveChance && Math.random() < 0.3) { window.spawnProjectile(window.player.x, window.player.y, baseAngle - 0.3, 8, window.player.damage, false, 70); window.spawnProjectile(window.player.x, window.player.y, baseAngle, 8, window.player.damage, false, 70); window.spawnProjectile(window.player.x, window.player.y, baseAngle + 0.3, 8, window.player.damage, false, 70); } 
+            else { window.spawnProjectile(window.player.x, window.player.y, baseAngle, 8, window.player.damage, false, 70); }
+            window.player.attackQueue--; window.player.burstTimer = 8;
+        }
+    }
+
+    if(window.player.attackCooldown > 0) window.player.attackCooldown--;
+
+    if (window.player.isParrying) {
+        window.player.parryTimer--;
+        if (window.player.parryTimer <= 0) { window.player.isParrying = false; window.playerEl.classList.remove('parrying'); window.playerEl.classList.add('parry-cd'); window.player.parryCooldown = 300; }
+    } else if (!window.player.isStunned && !window.player.isPulled) {
+        if (window.player.parryCooldown > 0) {
+            window.player.parryCooldown--; let secondsLeft = Math.ceil(window.player.parryCooldown / 60);
+            if(window.parryStatusEl) { window.parryStatusEl.innerText = `패링 쿨타임: ${secondsLeft}초`; window.parryStatusEl.style.color = "#e74c3c"; }
+            if(window.floatingCdEl) { window.floatingCdEl.innerText = `${secondsLeft}초`; }
+            if (window.player.parryCooldown <= 0) { 
+                if(window.parryStatusEl) { window.parryStatusEl.innerText = "패링 준비 완료"; window.parryStatusEl.style.color = "#3498db"; }
+                if(window.floatingCdEl) { window.floatingCdEl.innerText = ""; } 
+                window.playerEl.classList.remove('parry-cd'); 
+            }
+        }
+    }
+
+    if (window.player.hasSkill && window.skillStatusEl) {
+        if (window.player.skillCooldown > 0) { window.player.skillCooldown--; window.skillStatusEl.innerText = `회전베기: ${Math.ceil(window.player.skillCooldown / 60)}초`; window.skillStatusEl.style.color = "#e74c3c"; } 
+        else { window.skillStatusEl.innerText = "회전베기: 준비 완료!"; window.skillStatusEl.style.color = "#f1c40f"; }
+    }
+
+    window.bossLogic();
+
+    for (let i = window.projectiles.length - 1; i >= 0; i--) {
+        let p = window.projectiles[i]; p.x += Math.cos(p.angle) * p.speed; p.y += Math.sin(p.angle) * p.speed; p.el.style.left = p.x + 'px'; p.el.style.top = p.y + 'px'; p.el.style.transform = `translate(-50%, -50%) rotate(${p.angle}rad)`; p.timer++;
+
+        if (!p.isBoss && window.player.weaponType === 'fire' && p.timer % 2 === 0) { window.spawnFireTrail(p.x, p.y); }
+        if (p.x < -100 || p.x > window.GAME_WIDTH + 100 || p.y < -100 || p.y > window.GAME_HEIGHT + 100) { p.el.remove(); window.projectiles.splice(i, 1); continue; }
+
+        if (p.isBoss) {
+            if (window.getDistance(p.x, p.y, window.player.x, window.player.y) < window.player.radius + p.radius) {
+                if (window.player.isDashing) { } 
+                else if ((window.player.isParrying || window.player.autoParryTimer > 0) && !p.isUnparryable) {
+                    let isAutoParry = (window.player.autoParryTimer > 0 && !window.player.isParrying);
+                    if (!isAutoParry) { if (window.player.parryHeal) { window.player.hp = Math.min(window.player.maxHp, window.player.hp + 20); window.spawnDamageText(window.player.x, window.player.y, 20, 'heal'); } }
+
+                    window.createParryEffect(window.player.x, window.player.y); window.spawnDamageText(window.player.x, window.player.y - 40, 'PARRY!', 'crit');
+                    window.player.autoParryTimer = 6; window.playSound('parryed'); window.player.isParrying = false; 
+                    window.playerEl.classList.remove('parrying', 'parry-cd'); window.playerEl.classList.add('parry-deflect'); setTimeout(() => window.playerEl.classList.remove('parry-deflect'), 200);
+                    
+                    window.player.parryCooldown = 0; if(window.floatingCdEl) window.floatingCdEl.innerText = ""; if(window.parryStatusEl) window.parryStatusEl.style.color = "#2ecc71";
+                    
+                    if (p.el.classList.contains('slash-purple')) {
+                        if(window.parryStatusEl) window.parryStatusEl.innerText = "스턴 공격 패링 성공!";
+                        if(p.owner) { p.owner.hp -= 20; window.bossHitEffect(p.owner, p.owner.x, p.owner.y, 20, true); window.checkBossDeath(p.owner); } p.el.remove(); window.projectiles.splice(i, 1); 
+                    } else if (p.el.classList.contains('slash-chain')) {
+                        if(window.parryStatusEl) window.parryStatusEl.innerText = "사슬 튕겨내기 성공!";
+                        if(p.owner) { p.owner.hp -= 20; window.bossHitEffect(p.owner, p.owner.x, p.owner.y, 20, true); window.checkBossDeath(p.owner); } p.el.remove(); window.projectiles.splice(i, 1); 
+                    } else {
+                        if(window.parryStatusEl) window.parryStatusEl.innerText = "패링 반사 성공!";
+                        p.isBoss = false; p.el.classList.remove('boss-slash', 'heavy-slash', 'laser-slash', 'unparryable-attack', 'slash-green');
+                        let target = window.isMobileEnv ? window.getClosestBossTo(p.x, p.y) : window.getClosestBossTo(window.mousePos.x, window.mousePos.y); 
+                        p.angle = target ? Math.atan2(target.y - p.y, target.x - p.x) : p.angle + Math.PI; p.speed *= 1.5; p.damage *= 2;
+                    }
+                } else {
+                    let isChain = p.el.classList.contains('slash-chain');
+                    if (p.isGrab) {
+                        window.player.isStunned = true; window.player.stunTimer = 120; window.takeDamage(20); 
+                        p.el.remove(); window.projectiles.splice(i, 1);
+                    } else if (isChain) {
+                        window.player.isPulled = true; window.player.pullTimer = 40; window.player.pullTarget = p.owner; window.takeDamage(5); p.el.remove(); window.projectiles.splice(i, 1);
+                    } else {
+                        window.takeDamage(p.damage); p.el.remove(); window.projectiles.splice(i, 1); 
+                    }
+                }
+            }
+        } else {
+            for(let j = window.bosses.length - 1; j >= 0; j--) {
+                let b = window.bosses[j];
+                if (window.getDistance(p.x, p.y, b.x, b.y) < b.radius + p.radius) {
+                    b.hp -= p.damage; window.gainExp(p.damage);
+                    if (window.player.lifesteal > 0 && window.player.hp < window.player.maxHp) window.player.hp = Math.min(window.player.maxHp, window.player.hp + window.player.lifesteal);
+                    window.updateUI(); window.bossHitEffect(b, p.x, p.y, p.damage, false);
+                    if (window.player.weaponType === 'ice') { b.freezeStack++; window.spawnParticles(p.x, p.y, '#00ffff', 5); if (b.freezeStack >= 4) { b.isFrozen = true; b.freezeTimer = 180; b.freezeStack = 0; b.el.classList.add('frozen-boss'); window.spawnDamageText(b.x, b.y, 'FREEZE!', 'crit'); } } else if (window.player.weaponType === 'fire') { window.spawnParticles(p.x, p.y, '#e67e22', 15); b.hp -= 5; window.spawnDamageText(b.x, b.y + 20, 5, 'fire'); }
+                    p.el.remove(); window.projectiles.splice(i, 1); window.checkBossDeath(b); break;
+                }
+            }
+        }
+    }
+
+    if (window.player.hp <= 0) {
+        window.playSound('dead'); 
+        const finalScore = document.getElementById('final-score');
+        if(finalScore) finalScore.innerText = `현재 도달: Boss Wave ${window.bossLevel} / 플레이어 Lv. ${window.player.level}`;
+        
+        document.querySelectorAll('#game-over-modal').forEach(el => el.classList.remove('hidden')); 
+        window.isPaused = true; 
+        document.querySelectorAll('#btn-giveup').forEach(el => el.style.display = 'none'); 
+        
+        const submitBtn = document.getElementById('btn-submit-score');
+        if (submitBtn) { submitBtn.innerHTML = '기록 갱신하기'; submitBtn.disabled = false; submitBtn.style.background = '#27ae60'; }
+        const nickInput = document.getElementById('nickname-input');
+        if (nickInput) { nickInput.disabled = false; }
+        return;
+    }
+    
+    requestAnimationFrame(window.update);
+};
