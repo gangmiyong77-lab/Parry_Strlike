@@ -1,6 +1,6 @@
 let oldStyle = document.getElementById('game-dynamic-style');
 if (oldStyle) oldStyle.remove();
-document.querySelectorAll('#opening-screen, #btn-giveup, #leaderboard-modal, #tutorial-modal').forEach(el => el.remove());
+document.querySelectorAll('#opening-screen, #btn-giveup, #leaderboard-modal, #tutorial-modal, #level-up-modal').forEach(el => el.remove());
 
 const style = document.createElement('style');
 style.id = 'game-dynamic-style';
@@ -35,6 +35,14 @@ style.innerHTML = `
     
     .dash-shadow { position: absolute; width: 50px; height: 50px; background-color: rgba(52, 152, 219, 0.2); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 5; animation: shadowFade 0.3s ease-out forwards; }
     @keyframes shadowFade { 0% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); } }
+
+    /* ================================================= */
+    /* 새롭게 추가된 레벨 업 이펙트 CSS */
+    /* ================================================= */
+    .levelup-text { position: absolute; color: #f1c40f; font-weight: bold; font-size: 32px; text-shadow: 0 0 10px #fff, 0 0 20px #f1c40f, 2px 2px 0 #000; pointer-events: none; z-index: 100; animation: levelUpFloat 1s ease-out forwards; }
+    @keyframes levelUpFloat { 0% { transform: translate(-50%, 0) scale(0.5); opacity: 1; } 50% { transform: translate(-50%, -40px) scale(1.2); } 100% { transform: translate(-50%, -60px) scale(1); opacity: 0; } }
+    .levelup-pillar { position: absolute; width: 60px; height: 200px; background: linear-gradient(to top, rgba(241,196,15,0.8), transparent); border-radius: 50%; transform: translate(-50%, -100%); pointer-events: none; z-index: 15; animation: pillarFade 0.6s ease-out forwards; }
+    @keyframes pillarFade { 0% { opacity: 1; height: 0px; } 50% { opacity: 0.8; height: 200px; } 100% { opacity: 0; height: 300px; } }
 
     #opening-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20, 25, 30, 0.95); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
     .title-text { font-size: 48px; font-weight: bold; text-shadow: 0 0 20px #3498db; margin-bottom: 10px; text-align: center; }
@@ -71,7 +79,7 @@ style.innerHTML = `
     #btn-giveup:hover { transform: scale(1.1); }
     @media (max-width: 768px) { #btn-giveup { bottom: 130px !important; right: 15px !important; opacity: 0.8; } }
 `;
-if(window.container) window.container.appendChild(style); // head 대신 container 내부에 삽입(안전성)
+if(window.container) window.container.appendChild(style);
 
 if(window.container) {
     window.container.insertAdjacentHTML('beforeend', `
