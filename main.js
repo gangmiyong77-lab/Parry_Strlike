@@ -76,7 +76,7 @@ window.startGame = function() {
     window.bossLevel = 1; 
     document.querySelectorAll('#opening-screen').forEach(el => el.style.display = 'none');
     document.querySelectorAll('#btn-giveup').forEach(el => el.style.display = 'block');
-    window.updateWeaponAppearance(); // 시작 시 상점 장착 무기 적용
+    window.updateWeaponAppearance(); 
     window.isPaused = false; 
     window.spawnBosses(); 
     window.updateUI(); 
@@ -361,8 +361,59 @@ window.update = function() {
         if (submitBtn) { submitBtn.innerHTML = '기록 갱신하기'; submitBtn.disabled = false; submitBtn.style.background = '#27ae60'; }
         const nickInput = document.getElementById('nickname-input');
         if (nickInput) { nickInput.disabled = false; }
+        
+        // 사망 시에 마우스 쿨타임 숨김
+        const mouseCdContainer = document.getElementById('mouse-cd-container');
+        if (mouseCdContainer) mouseCdContainer.style.display = 'none';
+        
         return;
     }
     
+    // =====================================
+    // 마우스 커서 주변 쿨타임 UI 업데이트 로직
+    // =====================================
+    const mouseCdContainer = document.getElementById('mouse-cd-container');
+    if (mouseCdContainer) {
+        if (window.isMobileEnv) {
+            mouseCdContainer.style.display = 'none';
+        } else {
+            mouseCdContainer.style.display = 'block';
+            mouseCdContainer.style.left = window.mousePos.x + 'px';
+            mouseCdContainer.style.top = window.mousePos.y + 'px';
+
+            const dashEl = document.getElementById('cd-dash');
+            if (window.player.dashCooldown > 0) {
+                dashEl.innerText = `대시: ${(window.player.dashCooldown/60).toFixed(1)}s`;
+                dashEl.style.color = '#7f8c8d';
+            } else {
+                dashEl.innerText = '대시: ON';
+                dashEl.style.color = '#2ecc71';
+            }
+
+            const parryEl = document.getElementById('cd-parry');
+            if (window.player.parryCooldown > 0) {
+                parryEl.innerText = `패링: ${Math.ceil(window.player.parryCooldown/60)}s`;
+                parryEl.style.color = '#e74c3c';
+            } else {
+                parryEl.innerText = '패링: ON';
+                parryEl.style.color = '#3498db';
+            }
+
+            const skillEl = document.getElementById('cd-skill');
+            if (window.player.hasSkill) {
+                skillEl.style.display = 'block';
+                if (window.player.skillCooldown > 0) {
+                    skillEl.innerText = `스킬: ${Math.ceil(window.player.skillCooldown/60)}s`;
+                    skillEl.style.color = '#e74c3c';
+                } else {
+                    skillEl.innerText = '스킬: ON';
+                    skillEl.style.color = '#f1c40f';
+                }
+            } else {
+                skillEl.style.display = 'none';
+            }
+        }
+    }
+
     requestAnimationFrame(window.update);
 };
