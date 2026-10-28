@@ -1,4 +1,4 @@
-// 전역 변수 (모든 파일에서 참조 가능하도록 window 객체 사용)
+// 전역 변수 설정 (모든 파일에서 참조 가능)
 window.container = document.getElementById('game-container');
 window.playerEl = document.getElementById('player');
 window.parryStatusEl = document.getElementById('parry-status');
@@ -35,16 +35,22 @@ window.addEventListener('resize', () => {
     if(window.container) { window.GAME_WIDTH = window.container.clientWidth; window.GAME_HEIGHT = window.container.clientHeight; }
 });
 
-window.isPaused = true;
-window.isMobileEnv = false; 
-window.bossLevel = 1; 
-window.bosses = []; 
-window.projectiles = []; 
-window.blasters = [];
-window.isAttacking = false;
+// 상점 및 재화 시스템 메타 데이터 (로컬 스토리지 연동)
+window.totalGold = parseInt(localStorage.getItem('parry_gold')) || 0;
+window.unlockedItems = JSON.parse(localStorage.getItem('parry_unlocks')) || [];
+window.equippedWeapon = localStorage.getItem('parry_equipped_weapon') || 'normal';
 
+window.saveMeta = function() {
+    localStorage.setItem('parry_gold', window.totalGold);
+    localStorage.setItem('parry_unlocks', JSON.stringify(window.unlockedItems));
+    localStorage.setItem('parry_equipped_weapon', window.equippedWeapon);
+    window.updateGoldUI();
+};
+
+window.isPaused = true; window.isMobileEnv = false; 
+window.bossLevel = 1; window.bosses = []; window.projectiles = []; window.blasters = [];
+window.isAttacking = false;
 window.mousePos = { x: window.GAME_WIDTH / 2, y: window.GAME_HEIGHT / 2 };
 window.keys = { w: false, a: false, s: false, d: false };
-
 window.joyActive = false; window.joyCenter = { x: 0, y: 0 }; window.joystickDelta = { x: 0, y: 0 };
-window.player = null; // characterModel.js 에서 채워집니다.
+window.player = null;
