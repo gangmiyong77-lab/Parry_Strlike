@@ -42,13 +42,13 @@ style.innerHTML = `
     .menu-btn { padding: 15px 40px; font-size: 20px; font-weight: bold; background: transparent; color: white; border: 2px solid #3498db; border-radius: 10px; cursor: pointer; transition: 0.2s; margin-top: 10px; width: 280px; }
     .menu-btn:hover { background: #3498db; box-shadow: 0 0 20px #3498db; transform: scale(1.05); }
 
-    /* 리더보드 모달창 예쁘게 꾸미기 */
     #leaderboard-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 95%; max-width: 700px; height: 80vh; background: #1a1a2e; border: 4px solid #f1c40f; border-radius: 15px; padding: 0; display: flex; flex-direction: column; box-shadow: 0 0 40px rgba(241, 196, 15, 0.5); z-index: 500; }
     .lb-header { background: #2c3e50; padding: 15px; border-bottom: 3px solid #f1c40f; border-radius: 10px 10px 0 0; text-align: center; }
     .lb-header h2 { color: #f1c40f; margin: 0; text-shadow: 0 0 10px #f1c40f; font-size: 24px; }
     .lb-content { flex: 1; background: white; padding: 5px; }
     .lb-close-btn { padding: 15px; background: #e74c3c; color: white; border: none; font-weight: bold; font-size: 16px; cursor: pointer; border-radius: 0 0 10px 10px; transition: 0.2s; }
     .lb-close-btn:hover { background: #c0392b; }
+    .leaderboard-iframe { width: 100%; height: 100%; border: none; border-radius: 10px; background: white; }
 
     #tutorial-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 500px; background: rgba(10, 15, 20, 0.98); border: 2px solid #f1c40f; border-radius: 15px; padding: 25px; color: white; z-index: 400; box-shadow: 0 0 30px #f1c40f; overflow-y: auto; max-height: 80%; }
     
@@ -57,6 +57,7 @@ style.innerHTML = `
     .history-icon:hover { border-color: #f1c40f; box-shadow: 0 0 10px #f1c40f; z-index: 60; }
     .custom-tooltip { visibility: hidden; background-color: rgba(10, 15, 20, 0.95); color: #fff; text-align: right; border: 2px solid #f1c40f; border-radius: 8px; padding: 12px; position: absolute; z-index: 1000; top: 120%; right: 0; white-space: nowrap; font-size: 14px; opacity: 0; transition: opacity 0.1s; box-shadow: 0 0 15px #f1c40f; line-height: 1.5; pointer-events: none;}
     .history-icon:hover .custom-tooltip { visibility: visible; opacity: 1; }
+    .stack-badge { position: absolute; bottom: -6px; right: -6px; background: #e74c3c; color: white; font-size: 12px; font-weight: bold; border-radius: 50%; width: 20px; height: 20px; display: flex; justify-content: center; align-items: center; border: 2px solid #fff; box-shadow: 0 0 5px black; z-index: 55; }
 
     .slash { position: absolute; pointer-events: none; z-index: 15; display: flex; justify-content: center; align-items: center; clip-path: polygon(0% 0%, 100% 50%, 0% 100%, 30% 50%); }
     .slash-elemental { background: transparent !important; clip-path: none !important; filter: drop-shadow(0 0 10px currentColor); }
@@ -70,37 +71,39 @@ style.innerHTML = `
     #btn-giveup:hover { transform: scale(1.1); }
     @media (max-width: 768px) { #btn-giveup { bottom: 130px !important; right: 15px !important; opacity: 0.8; } }
 `;
-document.head.appendChild(style);
+if(window.container) window.container.appendChild(style); // head 대신 container 내부에 삽입(안전성)
 
-container.insertAdjacentHTML('beforeend', `
-    <div id="opening-screen">
-        <div class="title-text">PARRY STRIKE<br><span style="font-size:24px; color:#e74c3c;">Boss Rush</span></div>
-        <button id="btn-start-game" class="menu-btn" onclick="window.startGame()">▶ 게임 시작</button>
-        <button id="btn-show-lb-main" class="menu-btn" style="border-color: #9b59b6; color: #9b59b6;" onclick="window.showLeaderboard()">🏆 랭킹 리더보드 확인</button>
-        <button class="menu-btn" style="border-color: #f1c40f; color: #f1c40f; margin-top: 10px;" onclick="window.showTutorial()">📖 패턴 요약 보기</button>
-    </div>
-    <button id="btn-giveup" onclick="window.giveUpGame()">🏳️ 포기</button>
-
-    <div id="leaderboard-modal" class="modal hidden">
-        <div class="lb-header"><h2>🏆 명예의 전당 (Leaderboard) 🏆</h2></div>
-        <div class="lb-content">
-            <iframe class="leaderboard-iframe" src=""></iframe>
+if(window.container) {
+    window.container.insertAdjacentHTML('beforeend', `
+        <div id="opening-screen">
+            <div class="title-text">PARRY STRIKE<br><span style="font-size:24px; color:#e74c3c;">Boss Rush</span></div>
+            <button id="btn-start-game" class="menu-btn" onclick="window.startGame()">▶ 게임 시작</button>
+            <button id="btn-show-lb-main" class="menu-btn" style="border-color: #9b59b6; color: #9b59b6;" onclick="window.showLeaderboard()">🏆 랭킹 리더보드 확인</button>
+            <button class="menu-btn" style="border-color: #f1c40f; color: #f1c40f; margin-top: 10px;" onclick="window.showTutorial()">📖 패턴 요약 보기</button>
         </div>
-        <button class="lb-close-btn" onclick="window.closeLeaderboard()">❌ 닫기</button>
-    </div>
+        <button id="btn-giveup" onclick="window.giveUpGame()">🏳️ 포기</button>
 
-    <div id="tutorial-modal" class="modal hidden" style="padding:25px;">
-        <h3 style="color:#f1c40f; text-align:center; border-bottom:1px solid #555; padding-bottom:10px;">📖 패턴 요약</h3>
-        <p style="font-size:14px; line-height:1.6; text-align:left;">
-            🟨 <b>[노란색] 돌진:</b> 패링 시 기절<br>
-            🟪 <b>[보라색] 검기:</b> 패링 실패 시 2초 기절<br>
-            ⛓️ <b>[회색] 체인:</b> 끌어오기 방어<br>
-            🟩 <b>[초록색] 레이저:</b> 연쇄 자동 반사<br>
-            🟥 <b>[빨간색 ❌]:</b> 패링 절대 불가! 대시(Shift) 회피!
-        </p>
-        <button style="width:100%; padding:10px; background:#3498db; color:#fff; border:none; border-radius:5px;" onclick="window.closeTutorial()">확인 완료</button>
-    </div>
-`);
+        <div id="leaderboard-modal" class="modal hidden">
+            <div class="lb-header"><h2>🏆 명예의 전당 (Leaderboard) 🏆</h2></div>
+            <div class="lb-content">
+                <iframe class="leaderboard-iframe" src=""></iframe>
+            </div>
+            <button class="lb-close-btn" onclick="window.closeLeaderboard()">❌ 닫기</button>
+        </div>
+
+        <div id="tutorial-modal" class="modal hidden" style="padding:25px;">
+            <h3 style="color:#f1c40f; text-align:center; border-bottom:1px solid #555; padding-bottom:10px;">📖 패턴 요약</h3>
+            <p style="font-size:14px; line-height:1.6; text-align:left;">
+                🟨 <b>[노란색] 돌진:</b> 패링 시 기절<br>
+                🟪 <b>[보라색] 검기:</b> 패링 실패 시 2초 기절<br>
+                ⛓️ <b>[회색] 체인:</b> 끌어오기 방어<br>
+                🟩 <b>[초록색] 레이저:</b> 연쇄 자동 반사<br>
+                🟥 <b>[빨간색 ❌]:</b> 패링 절대 불가! 대시(Shift) 회피!
+            </p>
+            <button style="width:100%; padding:10px; background:#3498db; color:#fff; border:none; border-radius:5px;" onclick="window.closeTutorial()">확인 완료</button>
+        </div>
+    `);
+}
 
 const gameOverModal = document.getElementById('game-over-modal');
 if (gameOverModal) {
