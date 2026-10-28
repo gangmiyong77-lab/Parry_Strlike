@@ -1,6 +1,6 @@
 let oldStyle = document.getElementById('game-dynamic-style');
 if (oldStyle) oldStyle.remove();
-document.querySelectorAll('#opening-screen, #btn-giveup, #leaderboard-modal, #tutorial-modal, #shop-modal').forEach(el => el.remove());
+document.querySelectorAll('#opening-screen, #btn-giveup, #leaderboard-modal, #shop-modal, #tutorial-modal, #mouse-cd-container').forEach(el => el.remove());
 
 const style = document.createElement('style');
 style.id = 'game-dynamic-style';
@@ -11,6 +11,7 @@ style.innerHTML = `
     #joystick-knob { width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.8); position: absolute; top: 40px; left: 40px; }
     #action-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; pointer-events: auto; }
     .mob-btn { width: 60px; height: 60px; border-radius: 50%; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.5); color: white; font-size: 24px; display: flex; justify-content: center; align-items: center; user-select: none; }
+    .mob-btn:active { background: rgba(255,255,255,0.5); }
     
     #player { background: #3498db; border: 2px solid #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; z-index: 20; position: relative; transition: filter 0.2s; }
     #player-sword { position: absolute; width: 45px; height: 10px; background: #bdc3c7; left: 25px; top: 20px; border-radius: 5px; transform-origin: left center; transition: all 0.3s; z-index: -1; }
@@ -29,6 +30,8 @@ style.innerHTML = `
 
     .player-stunned { background: #9b59b6 !important; box-shadow: 0 0 20px #8e44ad, inset 0 0 15px #000 !important; animation: stunShake 0.1s infinite; filter: grayscale(0.3); }
     @keyframes stunShake { 0%, 100% { transform: translate(2px, 1px) } 25% { transform: translate(-2px, -1px) } 50% { transform: translate(1px, 2px) } 75% { transform: translate(-1px, -2px) } }
+    .stun-indicator { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); color: #f1c40f; font-weight: bold; font-size: 18px; text-shadow: 0 0 10px red; white-space: nowrap; animation: blink 0.3s infinite; z-index: 50; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     
     .dash-shadow { position: absolute; width: 50px; height: 50px; background-color: rgba(52, 152, 219, 0.2); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 5; animation: shadowFade 0.3s ease-out forwards; }
     @keyframes shadowFade { 0% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); } }
@@ -38,8 +41,19 @@ style.innerHTML = `
     .levelup-pillar { position: absolute; width: 60px; height: 200px; background: linear-gradient(to top, rgba(241,196,15,0.8), transparent); border-radius: 50%; transform: translate(-50%, -100%); pointer-events: none; z-index: 15; animation: pillarFade 0.6s ease-out forwards; }
     @keyframes pillarFade { 0% { opacity: 1; height: 0px; } 50% { opacity: 0.8; height: 200px; } 100% { opacity: 0; height: 300px; } }
     
-    /* 골드 획득 이펙트 */
     .gold-text { color: #f1c40f; font-size: 28px; font-weight: bold; text-shadow: 0 0 10px #e67e22, 2px 2px 0 #000; }
+
+    /* ================================================= */
+    /* 마우스 쿨타임 UI CSS */
+    /* ================================================= */
+    #mouse-cd-container { position: absolute; pointer-events: none; z-index: 800; display: none; }
+    .mouse-cd-item { position: absolute; font-size: 13px; font-weight: bold; text-shadow: 1px 1px 2px #000, 0 0 4px #000; white-space: nowrap; transform: translate(-50%, -50%); transition: color 0.1s; }
+    /* 위쪽 (대시) */
+    #cd-dash { top: -45px; left: 0px; }
+    /* 좌측 하단 (패링) */
+    #cd-parry { top: 25px; left: -45px; }
+    /* 우측 하단 (스킬) */
+    #cd-skill { top: 25px; left: 45px; }
 
     #opening-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20, 25, 30, 0.95); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
     .title-text { font-size: 48px; font-weight: bold; text-shadow: 0 0 20px #3498db; margin-bottom: 10px; text-align: center; }
@@ -47,7 +61,6 @@ style.innerHTML = `
     .menu-btn { padding: 15px 40px; font-size: 20px; font-weight: bold; background: transparent; color: white; border: 2px solid #3498db; border-radius: 10px; cursor: pointer; transition: 0.2s; margin-top: 10px; width: 280px; }
     .menu-btn:hover { background: #3498db; box-shadow: 0 0 20px #3498db; transform: scale(1.05); }
 
-    /* 리더보드 및 상점 모달창 */
     #leaderboard-modal, #shop-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 95%; max-width: 700px; height: 80vh; background: #1a1a2e; border: 4px solid #f1c40f; border-radius: 15px; padding: 0; display: flex; flex-direction: column; box-shadow: 0 0 40px rgba(241, 196, 15, 0.5); z-index: 500; }
     .lb-header { background: #2c3e50; padding: 15px; border-bottom: 3px solid #f1c40f; border-radius: 10px 10px 0 0; text-align: center; }
     .lb-header h2 { color: #f1c40f; margin: 0; text-shadow: 0 0 10px #f1c40f; font-size: 24px; }
@@ -74,7 +87,6 @@ style.innerHTML = `
 `;
 if(window.container) window.container.appendChild(style);
 
-// 인게임 UI 내 골드 표시 추가
 const playerUi = document.getElementById('player-ui');
 if(playerUi && !document.getElementById('gold-display')) {
     playerUi.insertAdjacentHTML('afterbegin', `<div style="font-size: 18px; font-weight: bold; color: #f1c40f; margin-bottom: 5px; text-shadow: 1px 1px 2px black;">🪙 <span id="gold-display">${window.totalGold}</span> G</div>`);
@@ -87,6 +99,13 @@ window.updateGoldUI = function() {
 
 if(window.container) {
     window.container.insertAdjacentHTML('beforeend', `
+        <!-- 마우스 쿨타임 UI 컨테이너 추가 -->
+        <div id="mouse-cd-container">
+            <div id="cd-dash" class="mouse-cd-item"></div>
+            <div id="cd-parry" class="mouse-cd-item"></div>
+            <div id="cd-skill" class="mouse-cd-item"></div>
+        </div>
+
         <div id="opening-screen">
             <div class="title-text">PARRY STRIKE<br><span style="font-size:24px; color:#e74c3c;">Boss Rush</span></div>
             <button id="btn-start-game" class="menu-btn" onclick="window.startGame()">▶ 게임 시작</button>
